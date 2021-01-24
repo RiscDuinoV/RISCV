@@ -1,0 +1,8 @@
+*
+!.gitignore
+!Proj_init.tcl
+!constraints/
+!pin.lpf
+!pin.xdc
+!README.md
+!*/

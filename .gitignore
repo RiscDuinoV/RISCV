@@ -1,0 +1,8 @@
+*
+!.gitignore
+!.gitmodules
+!README.md
+!*.vhd
+!*.v
+!Documentation/*
+!*/
