@@ -74,21 +74,7 @@ Three ready to use projects for the three big families of FPGA (Altera, Lattice,
 
 By default the project is configured with VexRiscv without JTAG and a bootloader.
 
-To send a program, go to [RiscV_Projects/Project_template](https://github.com/RiscDuinoV/RISCV/tree/master/RiscV_Projects/Project_template) compile the program and then send it to the RiscDuinoV. The compiling instructions are described in [RiscV_Projects](https://github.com/RiscDuinoV/RISCV/tree/master/RiscV_Projects) Open a terminal with the configuration 115200 8N1 and you should see an **Hello, World** message in the terminal.
-
-To create your own RISC-V project you can follow the example of [Project_Template](https://github.com/RiscDuinoV/RISCV/tree/master/RiscV_Projects/Project_template) to configure your application.
-
-You can use also Eclipse to create your own RISC-V, but you must configure the flags manually. In [Tools/Compiler/Toolchain-Script.cmake](https://github.com/RiscDuinoV/RISCV/blob/master/Tools/Compiler/Toolchain-Script.cmake), you can find all flags used to compile a RISC-V project.
-
-## Compiling with Arduino IDE
-
-If you don't want to read all the tutorial from **RiscV_Projects** to learn how to compile a simple program, you can use Arduino IDE to compile and send directly to the RiscDuinoV.
-
-First go to File &rarr; Preferences &rarr; Additional Boards Manager URLs and copy the following link :
-
-    https://github.com/RiscDuinoV/RiscDuinoV-Bin/raw/master/package_RiscDuinoV_index.json
-
-Then go to Tools &rarr; Board &rarr; Boards Manager, search and install **RiscDuinoV** board. Then after installing, on Tools &rarr; Board, you should be able to pick **RiscDuinoV** board and compile your code like an Arduino.
+Check [here](https://github.com/RiscDuinoV/Software) to learn how to send a program.
 
 ## Cloning the repository
 
