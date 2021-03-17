@@ -37,6 +37,7 @@ architecture rtl of Address_Decoder is
     constant C_SLAVES_N     :   integer := integer(ceil(log2(real(C_Slaves))));
     constant C_REG_N        :   integer := integer(ceil(log2(real(C_Registers)))) + 2;
     signal  LastAddr        :   std_logic_vector(31 downto 2); 
+    signal  LastAddrMem     :   std_logic_vector(31 downto 2);
 begin
     Bus_cmd_io.ADR    <=  ADR_I;
     Bus_cmd_io.DAT    <=  DAT_I;  	    
@@ -48,13 +49,12 @@ begin
         if ARst = '1' then
             RSP_ACK_O <= '0';
         elsif rising_edge(Clk) then
-            if STB_I = '1' then
-                LastAddr <= ADR_I;
-            end if;
-            DAT_O     <=  Bus_rsp_io(to_integer(unsigned(LastAddr(C_SLAVES_N + C_REG_N - 1 downto C_REG_N)))).DAT;
-            RSP_ACK_O <=  Bus_rsp_io(to_integer(unsigned(LastAddr(C_SLAVES_N + C_REG_N - 1 downto C_REG_N)))).RSP_ACK;
+            LastAddrMem <=  LastAddr;
+            DAT_O       <=  Bus_rsp_io(to_integer(unsigned(LastAddr(C_SLAVES_N + C_REG_N - 1 downto C_REG_N)))).DAT;
+            RSP_ACK_O   <=  Bus_rsp_io(to_integer(unsigned(LastAddr(C_SLAVES_N + C_REG_N - 1 downto C_REG_N)))).RSP_ACK;
         end if;
     end process pIO_CPU_READ;
+    LastAddr <= ADR_I when STB_I = '1' else LastAddrMem;
     CMD_ACK_O <=  Bus_rsp_io(to_integer(unsigned(LastAddr(C_SLAVES_N + C_REG_N - 1 downto C_REG_N)))).CMD_ACK;
     genCe: for i in 0 to C_Slaves - 1 generate
         Bus_cmd_io_ce(i) <= STB_I when to_integer(unsigned(LastAddr(C_SLAVES_N + C_REG_N - 1 downto C_REG_N))) = i else '0';
