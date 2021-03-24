@@ -29,8 +29,7 @@ architecture rtl of i2c is
     signal DataRx               :   std_logic_vector(7 downto 0);
     signal AckErrFlag           :   std_logic;
     signal BusyFlag             :   std_logic;
-    signal StartTransmission    :   std_logic;
-    signal EndTransmission      :   std_logic;
+    signal En                   :   std_logic;
     signal TrigWrite            :   std_logic;
     signal TrigRead             :   std_logic;
     signal SclFreq              :   std_logic_vector(15 downto 0) := C_I2C_Init;
@@ -43,8 +42,7 @@ begin
             if Rst = '1' then
                 TrigRead            <= '0';
                 TrigWrite           <= '0';
-                EndTransmission     <= '0';
-                StartTransmission   <= '0';
+                En                  <= '0';
                 SclFreq             <= C_I2C_Init;
             else
                 if Ce_I = '1' and data_WE_I = '1' and data_SEL_I(0) = '1' then
@@ -53,13 +51,10 @@ begin
                 if Ce_I = '1' and data_WE_I = '1' and data_SEL_I(1) = '1' then
                     TrigRead            <= data_DAT_I(8);
                     TrigWrite           <= data_DAT_I(9);
-                    EndTransmission     <= data_DAT_I(10);
-                    StartTransmission   <= data_DAT_I(11);
+                    En                  <= data_DAT_I(10);
                 else
                     TrigRead            <= '0';
                     TrigWrite           <= '0';
-                    EndTransmission     <= '0';
-                    StartTransmission   <= '0';
                 end if;
                 if Ce_I = '1' and data_WE_I = '1' and data_SEL_I(2) = '1' then
                     SclFreq <= data_DAT_I(31 downto 16);
@@ -69,27 +64,20 @@ begin
     end process pWrite;
 
     i2c_master : entity work.i2c_master
-    port map
-    (
-        Clk                 =>  Clk,
-        SRst                =>  Rst,
-
-        SclFreq             =>  SclFreq,
-
-        StartTransmission   =>  StartTransmission,
-        EndTransmission     =>  EndTransmission,
-
-        TrigWrite           =>  TrigWrite,
-        DataTx              =>  DataTx,
-
-        TrigRead            =>  TrigRead,
-        DataRx              =>  DataRx,
-
-        BusyFlag            =>  BusyFlag,
-        AckErrFlag          =>  AckErrFlag,
-
-        Scl                 =>  Scl,
-        Sda                 =>  Sda
-    );
+        port map
+        (
+            Clk      => Clk,
+            SRst     => Rst,
+            SclFreq  => SclFreq,
+            En       => En,
+            WrEn     => TrigWrite,
+            TxDat    => DataTx,
+            RdEn     => TrigRead,
+            RxDat    => DataRx,
+            BusyFlag => BusyFlag,
+            AckErr   => AckErrFlag,
+            Scl      => Scl,
+            Sda      => Sda
+        );
     
 end architecture rtl;
