@@ -49,7 +49,7 @@ entity SocAddressDecoder is
         Spi_Sck             :   out std_logic_vector(C_Sio - 1 downto 0);
         Spi_Miso            :   in  std_logic_vector(C_Spi - 1 downto 0)            :=  (others => '0');
         Spi_Mosi            :   out std_logic_vector(C_Spi - 1 downto 0);
-        Spi_Ce_N            :   out std_logic_vector(C_Spi - 1 downto 0);
+        Spi_Ss              :   out std_logic_vector(C_Spi - 1 downto 0);
         
         -- I2C
         I2C_Scl	            :   out     std_logic_vector(C_i2c - 1 downto 0)        := 	(others => '0');
@@ -166,7 +166,7 @@ begin
             Spi_Sck         =>  Spi_Sck,
             Spi_Miso        =>  Spi_Miso,
             Spi_Mosi        =>  Spi_Mosi,
-            Spi_Ce_N        =>  Spi_Ce_N,
+            Spi_Ss          =>  Spi_Ss,
             
             -- I2C
             I2C_Scl         =>  I2C_Scl,

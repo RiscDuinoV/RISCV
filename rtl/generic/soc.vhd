@@ -58,7 +58,7 @@ entity soc is
 		Spi_Sck			:	out		std_logic_vector(C_Sio - 1 downto 0);
 		Spi_Miso		:	in		std_logic_vector(C_Spi - 1 downto 0)	:=	(others => '0');
 		Spi_Mosi		:	out		std_logic_vector(C_Spi - 1 downto 0);
-		Spi_Ce_N		:	out		std_logic_vector(C_Spi - 1 downto 0);
+		Spi_Ss			:	out		std_logic_vector(C_Spi - 1 downto 0);
 
 		-- I2C
 		I2C_Scl			:	out		std_logic_vector(C_i2c - 1 downto 0);
@@ -411,25 +411,25 @@ begin
 		Ext_Intr_Ctrl_Vector(i) <= from_sio(i)(8);
 	end generate genSio;
 	genSpi: for i in 0 to C_Spi - 1 generate
-		spi	:	entity work.spi
-		generic map
-		(
-			C_fixed_speed	=> false
-		)
-		port map
-		(
-			Rst			=> Reset_MCU,
-			ce			=> Spi_Ce(i), 
-			clk			=> Clk,
-			bus_write	=> data_WE_O,
-			byte_sel	=> data_SEL_O,
-			bus_in		=> data_DAT_O,
-			bus_out		=> from_spi(i),
-			spi_sck		=> Spi_Sck(i), 
-			spi_mosi	=> Spi_Mosi(i), 
-			spi_cen		=> Spi_Ce_N(i),
-			spi_miso	=> Spi_Miso(i)
-		);
+		spi : entity work.Spi
+			generic map
+			(
+				C_Freq_MHz => FREQ_MHZ
+			)
+			port map
+			(
+				Clk         => Clk,
+				SRst        => Reset_MCU,
+				Ce          => Spi_Ce(i),
+				Data_DAT_O  => from_spi(i),
+				Data_DAT_I  => Data_DAT_O,
+				Data_WE     => data_WE_O,
+				Data_SEL    => Data_SEL_O,
+				Sck         => Spi_Sck(i),
+				Mosi        => Spi_Mosi(i),
+				Miso        => Spi_Miso(i),
+				Ss          => Spi_Ss(i)
+			);
 		Spi_Ce(i) <= io_addr_strobe when R_io_addr(11 downto 6) = x"B" & "01" and to_integer(unsigned(R_io_addr(5 downto 4))) = i else '0';
 	end generate genSpi;
 	mtime : entity work.mtime
