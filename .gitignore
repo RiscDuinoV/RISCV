@@ -1,8 +1,10 @@
 *
 !.gitignore
-!.gitmodules
-!README.md
 !*.vhd
 !*.v
-!Documentation/*
+!rtl/scala/project/*
+!*.scala
+!rtl/scala/build.sbt
 !*/
+rtl/cpu/*
+!rtl/cpu/VexRiscvWrapper.vhd
