@@ -20,9 +20,10 @@ entity Uart is
         En          : in    std_logic;
         TxVld       : in    std_logic;
         TxDat       : in    std_logic_vector(7 downto 0);
+        TxBusy      : out   std_logic;
         RxVld       : out   std_logic;
         RxDat       : out   std_logic_vector(7 downto 0);
-        TxBusy      : out   std_logic;
+        Baud        : out   std_logic;
         Rx          : in    std_logic;
         Tx          : out   std_logic
     );
@@ -51,4 +52,5 @@ begin
             En      => En,      Baud16  => Baud16,
             RxEn    => RxVld,   RxDat   => RxDat,
             Rx      => Rx);
+    Baud <= Baud16;
 end architecture rtl;

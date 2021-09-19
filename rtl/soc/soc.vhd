@@ -7,8 +7,8 @@ use work.XtrDef.all;
 
 entity soc is
     generic (
-        C_Freq      : integer := 50_000_000;
-        C_InitFile  : string  := "none"
+        C_FREQ      : integer := 50_000_000;
+        C_INIT_FILE : string  := "none"
     );
     port 
     (
@@ -29,7 +29,8 @@ end entity soc;
 
 architecture rtl of soc is
     -- Infra
-    signal CpuRst           : std_logic;
+    signal SysRst           : std_logic;
+    signal RstHold          : std_logic_vector(3 downto 0);
     -- Root of Xtr bus
     signal InstrXtrCmd      : XtrCmd_t;
     signal InstrXtrRsp      : XtrRsp_t;
@@ -57,17 +58,26 @@ architecture rtl of soc is
     signal vSpiXtrCmd       : vXtrCmd_t(0 to 3);
     signal vSpiXtrRsp       : vXtrRsp_t(0 to 3);
 
+    -- Boot trap
+    signal BootTrapRstRqst  : std_logic;
+
 begin
+    -- Hold reset for at least 4 clock cycles
     process (Clk)
     begin
         if rising_edge(Clk) then
-            CpuRst <= ARst;
+            if ARst = '1' or BootTrapRstRqst = '1' then
+                RstHold <= (others => '1');
+            elsif RstHold(3) = '1' then
+                RstHold <= RstHold(2 downto 0) & '0';
+            end if;
         end if;
     end process;
-    --CpuRst <= ARst;
+    SysRst <= RstHold(3);
+    
     uCpu : entity work.VexRiscvWrapper
         port map (
-            Clk         => Clk,         SRst        => CpuRst,
+            Clk         => Clk,         SRst        => SysRst,
             Tck         => Tck,         Tdi         => Tdi,         Tdo         => Tdo, Tms => Tms,
             InstrXtrCmd => InstrXtrCmd, InstrXtrRsp => InstrXtrRsp,
             DatXtrCmd   => DatXtrCmd,   DatXtrRsp   => DatXtrRsp,
@@ -77,7 +87,7 @@ begin
         generic map (
             C_MMSB => 31, C_MLSB => 32, C_Slave => 2)
         port map (
-            ARst    => ARst,        Clk     => Clk,         SRst => '0', 
+            ARst    => ARst,        Clk     => Clk,         SRst => SysRst, 
             XtrCmd  => DatXtrCmd,   XtrRsp  => DatXtrRsp,
             vXtrCmd => vXtrCmdLyr1, vXtrRsp => vXtrRspLyr1);
     
@@ -87,6 +97,9 @@ begin
     vXtrRspLyr1(0)  <= BramDatXtrRsp;
 
     uBram : entity work.BramWrapper
+        generic map (
+            C_INIT_FILE => C_INIT_FILE
+        )
         port map (
             Clk         => Clk,
             InstrXtrCmd => BramInstrXtrCmd, InstrXtrRsp => BramInstrXtrRsp,
@@ -114,7 +127,7 @@ begin
             vXtrCmd => vXtrCmdLyr3,     vXtrRsp => vXtrRspLyr3);
     -- UART
     -- CXXX XXXX XXXX FB00
-    -- CXXX XXXX XXXX FBFF
+    -- FXXX XXXX XXXX FBFF
     uXtrAbrUart : entity work.XtrAbr
         generic map (
             C_MMSB => 9, C_MLSB => 8,  C_MASK => x"FFFFFB00", C_Slave  => 4)
@@ -126,15 +139,15 @@ begin
         generic map (
             C_Freq => C_Freq, C_Baud => 115_200)
         port map (
-            ARst    => ARst,            Clk     => Clk,             SRst => '0',
+            ARst    => ARst,            Clk     => Clk,             SRst => SysRst,
             XtrCmd  => vUartXtrCmd(0),  XtrRsp  => vUartXtrRsp(0),
             Rx      => Rx,              Tx      => Tx);
     -- SPI
     -- CXXX XXXX XXXX F100
-    -- CXXX XXXX XXXX F1FF
+    -- FXXX XXXX XXXX F1FF
     uXtrAbrSpi : entity work.XtrAbr
         generic map (
-            C_MMSB => 9, C_MLSB => 8, C_MASK => x"FFFFF100", C_Slave  => 4)
+            C_MMSB => 9, C_MLSB => 8, C_MASK => x"FFFFF200", C_Slave  => 4)
         port map (
             ARst    => ARst,            Clk     => Clk,             SRst => '0', 
             XtrCmd  => vXtrCmdLyr3(1),  XtrRsp  => vXtrRspLyr3(1),
@@ -144,8 +157,17 @@ begin
         generic map (
             C_FreqIn => C_Freq, C_FreqOut => 100e3)
         port map (
-            ARst    => ARst,            Clk     => Clk,             SRst => '0',
+            ARst    => ARst,            Clk     => Clk,             SRst => SysRst,
             XtrCmd  => vSpiXtrCmd(0),   XtrRsp  => vSpiXtrRsp(0),
             Sck     => Sck,             Mosi    => Mosi,            Miso => Miso,   Ss => Ss);
-    
+    -- Boot trap
+    -- CXXX XXXX XXXX FE00
+    -- FXXX XXXX XXXX FFFF 
+    XtrBootTrap_inst : entity work.XtrBootTrap
+        port map (
+            ARst    => ARst,                        Clk     => Clk,                     SRst    => '0',
+            XtrCmd  => vXtrCmdLyr3(7),              XtrRsp  => vXtrRspLyr3(7),
+            Baud    => vUartXtrRsp(0).Dat(11),      RxVld   => vUartXtrRsp(0).Dat(9),   RxDat   => vUartXtrRsp(0).Dat(7 downto 0),
+            Trap    => BootTrapRstRqst);
+          
 end architecture rtl;

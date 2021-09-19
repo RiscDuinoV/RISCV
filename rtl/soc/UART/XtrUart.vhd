@@ -29,13 +29,16 @@ architecture rtl of XtrUart is
     signal RxDat        : std_logic_vector(7 downto 0);
     signal RxAvailable  : std_logic;
     signal RxDatVld     : std_logic_vector(7 downto 0);
+    signal Baud         : std_logic;
+    signal dRxVld       : std_logic;
 begin
-    XtrRsp.Dat <= x"00000" & '0' & TxBusy & '0' & RxAvailable & RxDatVld;
+    XtrRsp.Dat <= x"00000" & Baud & TxBusy & dRxVld & RxAvailable & RxDatVld;
     XtrRsp.CRdy <= XtrCmd.Stb;
     process (Clk)
     begin
         if rising_edge(Clk) then
             XtrRsp.RRdy <= XtrCmd.Stb;
+            dRxVld      <= RxVld;
         end if;
     end process;
     process (Clk, ARst)
@@ -65,7 +68,7 @@ begin
             ARst    => ARst,    Clk     => Clk,     SRst    => SRst,
             En      => '1',
             TxVld   => TxVld,   TxDat   => TxDat,   TxBusy  => TxBusy,
-            RxVld   => RxVld,   RxDat   => RxDat,
+            RxVld   => RxVld,   RxDat   => RxDat,   Baud    => Baud,
             Rx      => Rx,      Tx      => Tx);
     
 end architecture rtl;

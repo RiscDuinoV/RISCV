@@ -6,8 +6,10 @@ library work;
 use work.XtrDef.all;
 
 entity BramWrapper is
-    port 
-    (
+    generic (
+        C_INIT_FILE : string := "none"
+    );
+    port (
         Clk         : in    std_logic;
         InstrXtrCmd : in    XtrCmd_t;
         InstrXtrRsp : out   XtrRsp_t;
@@ -39,7 +41,7 @@ begin
             C_ADDR_WIDTH    => 13,
             C_BYTE_WIDTH    => 8,
             C_NB_BYTE       => 4,
-            C_INIT_FILE     => "../../../soft/bin/Test.mem")
+            C_INIT_FILE     => C_INIT_FILE)
         port map (
             Clk     => Clk,
             En      => '1',

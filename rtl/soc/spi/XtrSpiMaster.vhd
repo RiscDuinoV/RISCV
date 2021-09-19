@@ -65,7 +65,7 @@ begin
     uSpiMaster : entity work.SpiMaster
         port map (
             ARst    => ARst,    Clk     => Clk,     SRst        => SRst,
-            Freq    => Freq,    En      => En,
+            Freq    => Freq,    En      => '1',
             Trg     => Trg,     TxDat   => TxDat,   BusyFlag    => TxBusy,
             RxDat   => RxDat,   RxVld   => open,
             Sck     => Sck,     Mosi    => Mosi,    Miso        => Miso,    Ss  => Ss);
