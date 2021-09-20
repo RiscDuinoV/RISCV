@@ -57,7 +57,9 @@ architecture rtl of soc is
     -- Spi
     signal vSpiXtrCmd       : vXtrCmd_t(0 to 3);
     signal vSpiXtrRsp       : vXtrRsp_t(0 to 3);
-
+    -- Timers
+    signal vTimerXtrCmd     : vXtrCmd_t(0 to 7);
+    signal vTimerXtrRsp     : vXtrRsp_t(0 to 7);
     -- Boot trap
     signal BootTrapRstRqst  : std_logic;
 
@@ -160,6 +162,22 @@ begin
             ARst    => ARst,            Clk     => Clk,             SRst => SysRst,
             XtrCmd  => vSpiXtrCmd(0),   XtrRsp  => vSpiXtrRsp(0),
             Sck     => Sck,             Mosi    => Mosi,            Miso => Miso,   Ss => Ss);
+    -- Timers
+    -- CXXX XXXX XXXX F400
+    -- FXXX XXXX XXXX F5FF 
+    uXtrAbrTimer : entity work.XtrAbr
+        generic map (
+            C_MMSB => 9, C_MLSB => 8, C_MASK => x"FFFFF400", C_Slave  => 8)
+        port map (
+            ARst    => ARst,            Clk     => Clk,             SRst => '0', 
+            XtrCmd  => vXtrCmdLyr3(2),  XtrRsp  => vXtrRspLyr3(2),
+            vXtrCmd => vTimerXtrCmd,    vXtrRsp => vTimerXtrRsp);
+
+    uMtime : entity work.XtrMtime
+        port map (
+            ARst    => ARst,    Clk => Clk, SRst    => SysRst,
+            XtrCmd  => vTimerXtrCmd(0),     XtrRsp  => vTimerXtrRsp(0),
+            Irq     => open);
     -- Boot trap
     -- CXXX XXXX XXXX FE00
     -- FXXX XXXX XXXX FFFF 
