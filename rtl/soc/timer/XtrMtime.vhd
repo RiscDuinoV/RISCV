@@ -74,5 +74,5 @@ begin
             end if;
         end if;
     end process pMtime;
-    
+    Irq <= '1' when mtime >= mtimecmp else '0';
 end architecture rtl;
