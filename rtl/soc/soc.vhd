@@ -23,7 +23,9 @@ entity soc is
         Sck     : out   std_logic;
         Mosi    : out   std_logic;
         Miso    : in    std_logic;
-        Ss      : out   std_logic
+        Ss      : out   std_logic;
+        Scl     : out   std_logic;
+        Sda     : inout std_logic
     );
 end entity soc;
 
@@ -49,7 +51,9 @@ architecture rtl of soc is
     signal BramInstrXtrRsp  : XtrRsp_t;
     signal BramDatXtrCmd    : XtrCmd_t;
     signal BramDatXtrRsp    : XtrRsp_t;
-
+    -- I2C
+    signal vI2cXtrCmd       : vXtrCmd_t(0 to 3);
+    signal vI2cXtrRsp       : vXtrRsp_t(0 to 3);
     -- UART
     signal vUartXtrCmd      : vXtrCmd_t(0 to 3);
     signal vUartXtrRsp      : vXtrRsp_t(0 to 3);
@@ -127,6 +131,23 @@ begin
             ARst    => ARst,            Clk     => Clk,             SRst => '0', 
             XtrCmd  => vXtrCmdLyr2(1),  XtrRsp  => vXtrRspLyr2(1),
             vXtrCmd => vXtrCmdLyr3,     vXtrRsp => vXtrRspLyr3);
+    -- I2C
+    -- CXXX XXXX XXXX F000
+    -- FXXX XXXX XXXX F0FF
+    uXtrAbrI2C : entity work.XtrAbr
+        generic map (
+            C_MMSB => 9, C_MLSB => 8, C_MASK => x"FFFFF000", C_Slave  => 4)
+        port map (
+            ARst    => ARst,            Clk     => Clk,             SRst => '0', 
+            XtrCmd  => vXtrCmdLyr3(0),  XtrRsp  => vXtrRspLyr3(0),
+            vXtrCmd => vI2cXtrCmd,      vXtrRsp => vI2cXtrRsp);
+    uXtrI2C : entity work.XtrI2C
+        generic map (
+            C_FreqIn => C_FREQ, C_FreqOut => 200_000)
+        port map (
+            ARst    => ARst,    Clk => Clk, SRst    => SysRst,
+            XtrCmd  => vI2cXtrCmd(0),       XtrRsp  => vI2cXtrRsp(0),
+            Scl     => Scl,     Sda => Sda);
     -- UART
     -- CXXX XXXX XXXX FB00
     -- FXXX XXXX XXXX FBFF
@@ -145,8 +166,8 @@ begin
             XtrCmd  => vUartXtrCmd(0),  XtrRsp  => vUartXtrRsp(0),
             Rx      => Rx,              Tx      => Tx);
     -- SPI
-    -- CXXX XXXX XXXX F100
-    -- FXXX XXXX XXXX F1FF
+    -- CXXX XXXX XXXX F200
+    -- FXXX XXXX XXXX F2FF
     uXtrAbrSpi : entity work.XtrAbr
         generic map (
             C_MMSB => 9, C_MLSB => 8, C_MASK => x"FFFFF200", C_Slave  => 4)
