@@ -8,7 +8,11 @@ use work.XtrDef.all;
 entity soc is
     generic (
         C_FREQ      : integer := 50_000_000;
-        C_INIT_FILE : string  := "none"
+        C_INIT_FILE : string  := "none";
+        C_UART      : integer range 0 to 4 := 1;
+        C_SPI       : integer range 0 to 4 := 1;
+        C_I2C       : integer range 0 to 4 := 1;
+        C_BOOTTRAP  : boolean := false
     );
     port 
     (
@@ -18,14 +22,14 @@ entity soc is
         Tdi     : in    std_logic := '0';
         Tdo     : out   std_logic;
         Tms     : in    std_logic := '0';
-        Rx      : in    std_logic;
-        Tx      : out   std_logic;
-        Sck     : out   std_logic;
-        Mosi    : out   std_logic;
-        Miso    : in    std_logic;
-        Ss      : out   std_logic;
-        Scl     : out   std_logic;
-        Sda     : inout std_logic
+        Rx      : in    std_logic_vector(C_UART - 1 downto 0);
+        Tx      : out   std_logic_vector(C_UART - 1 downto 0);
+        Sck     : out   std_logic_vector(C_SPI - 1 downto 0);
+        Mosi    : out   std_logic_vector(C_SPI - 1 downto 0);
+        Miso    : in    std_logic_vector(C_SPI - 1 downto 0);
+        Ss      : out   std_logic_vector(C_SPI - 1 downto 0);
+        Scl     : out   std_logic_vector(C_I2C - 1 downto 0);
+        Sda     : inout std_logic_vector(C_I2C - 1 downto 0)
     );
 end entity soc;
 
@@ -141,13 +145,15 @@ begin
             ARst    => ARst,            Clk     => Clk,             SRst => '0', 
             XtrCmd  => vXtrCmdLyr3(0),  XtrRsp  => vXtrRspLyr3(0),
             vXtrCmd => vI2cXtrCmd,      vXtrRsp => vI2cXtrRsp);
-    uXtrI2C : entity work.XtrI2C
-        generic map (
-            C_FreqIn => C_FREQ, C_FreqOut => 200_000)
-        port map (
-            ARst    => ARst,    Clk => Clk, SRst    => SysRst,
-            XtrCmd  => vI2cXtrCmd(0),       XtrRsp  => vI2cXtrRsp(0),
-            Scl     => Scl,     Sda => Sda);
+    genI2C: for i in 1 to C_I2C generate        
+        uXtrI2C : entity work.XtrI2C
+            generic map (
+                C_FreqIn => C_FREQ, C_FreqOut => 200_000)
+            port map (
+                ARst    => ARst,                Clk     => Clk,                     SRst    => SysRst,
+                XtrCmd  => vI2cXtrCmd(i - 1),   XtrRsp  => vI2cXtrRsp(i - 1),
+                Scl     => Scl(i - 1),          Sda     => Sda(i - 1));
+    end generate genI2C;
     -- UART
     -- CXXX XXXX XXXX FB00
     -- FXXX XXXX XXXX FBFF
@@ -158,13 +164,15 @@ begin
             ARst    => ARst,            Clk     => Clk,             SRst => '0', 
             XtrCmd  => vXtrCmdLyr3(5),  XtrRsp  => vXtrRspLyr3(5),
             vXtrCmd => vUartXtrCmd,     vXtrRsp => vUartXtrRsp);
-    uXtrUart : entity work.XtrUart
-        generic map (
-            C_Freq => C_Freq, C_Baud => 115_200)
-        port map (
-            ARst    => ARst,            Clk     => Clk,             SRst => SysRst,
-            XtrCmd  => vUartXtrCmd(0),  XtrRsp  => vUartXtrRsp(0),
-            Rx      => Rx,              Tx      => Tx);
+    genUART: for i in 1 to C_UART generate        
+        uXtrUart : entity work.XtrUart
+            generic map (
+                C_Freq => C_Freq, C_Baud => 115_200)
+            port map (
+                ARst    => ARst,                Clk     => Clk,             SRst => SysRst,
+                XtrCmd  => vUartXtrCmd(i - 1),  XtrRsp  => vUartXtrRsp(i - 1),
+                Rx      => Rx(i - 1),           Tx      => Tx(i - 1));
+    end generate genUART;
     -- SPI
     -- CXXX XXXX XXXX F200
     -- FXXX XXXX XXXX F2FF
@@ -175,14 +183,15 @@ begin
             ARst    => ARst,            Clk     => Clk,             SRst => '0', 
             XtrCmd  => vXtrCmdLyr3(1),  XtrRsp  => vXtrRspLyr3(1),
             vXtrCmd => vSpiXtrCmd,      vXtrRsp => vSpiXtrRsp);
-
-    uXtrSpi : entity work.XtrSpiMaster
-        generic map (
-            C_FreqIn => C_Freq, C_FreqOut => 100e3)
-        port map (
-            ARst    => ARst,            Clk     => Clk,             SRst => SysRst,
-            XtrCmd  => vSpiXtrCmd(0),   XtrRsp  => vSpiXtrRsp(0),
-            Sck     => Sck,             Mosi    => Mosi,            Miso => Miso,   Ss => Ss);
+    genSPI: for i in 1 to C_SPI generate        
+        uXtrSpi : entity work.XtrSpiMaster
+            generic map (
+                C_FreqIn => C_Freq, C_FreqOut => 100e3)
+            port map (
+                ARst    => ARst,                Clk     => Clk,             SRst => SysRst,
+                XtrCmd  => vSpiXtrCmd(i - 1),   XtrRsp  => vSpiXtrRsp(i - 1),
+                Sck     => Sck(i - 1),          Mosi    => Mosi(i - 1),     Miso => Miso(i - 1),    Ss  => Ss(i - 1));
+    end generate genSPI;
     -- Timers
     -- CXXX XXXX XXXX F400
     -- FXXX XXXX XXXX F5FF 
@@ -199,14 +208,18 @@ begin
             ARst    => ARst,    Clk => Clk, SRst    => SysRst,
             XtrCmd  => vTimerXtrCmd(0),     XtrRsp  => vTimerXtrRsp(0),
             Irq     => open);
-    -- Boot trap
-    -- CXXX XXXX XXXX FE00
-    -- FXXX XXXX XXXX FFFF 
-    XtrBootTrap_inst : entity work.XtrBootTrap
-        port map (
-            ARst    => ARst,                        Clk     => Clk,                     SRst    => '0',
-            XtrCmd  => vXtrCmdLyr3(7),              XtrRsp  => vXtrRspLyr3(7),
-            Baud    => vUartXtrRsp(0).Dat(11),      RxVld   => vUartXtrRsp(0).Dat(9),   RxDat   => vUartXtrRsp(0).Dat(7 downto 0),
-            Trap    => BootTrapRstRqst);
+
+    genBootTrap: if C_BOOTTRAP = TRUE and C_UART >= 1 generate
+        -- Boot trap
+        -- CXXX XXXX XXXX FE00
+        -- FXXX XXXX XXXX FFFF 
+        XtrBootTrap_inst : entity work.XtrBootTrap
+            port map (
+                ARst    => ARst,                        Clk     => Clk,                     SRst    => '0',
+                XtrCmd  => vXtrCmdLyr3(7),              XtrRsp  => vXtrRspLyr3(7),
+                Baud    => vUartXtrRsp(0).Dat(11),      RxVld   => vUartXtrRsp(0).Dat(9),   RxDat   => vUartXtrRsp(0).Dat(7 downto 0),
+                Trap    => BootTrapRstRqst);
+    end generate genBootTrap;
+
           
 end architecture rtl;
