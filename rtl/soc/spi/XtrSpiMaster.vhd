@@ -45,16 +45,18 @@ begin
     begin
         if ARst = '1' then
             Freq <= freq2reg(C_FreqOut, C_FreqIn, 16);
+            En <= '0';
         elsif rising_edge(Clk) then
             if SRst = '1' then
                 Freq <= freq2reg(C_FreqOut, C_FreqIn, 16);
+                En <= '0';
             else
                 if XtrCmd.Stb = '1' and XtrCmd.We = '1' then
                     if XtrCmd.Sel(1) = '1' then
-                        En <= XtrCmd.Dat(0);
+                        En <= XtrCmd.Dat(8);
                     end if;
                     if XtrCmd.Sel(2) = '1' then
-                        Freq <= XtrCmd.Dat(15 downto 0);
+                        Freq <= XtrCmd.Dat(31 downto 16);
                     end if;
                 end if;
             end if;
@@ -65,7 +67,7 @@ begin
     uSpiMaster : entity work.SpiMaster
         port map (
             ARst    => ARst,    Clk     => Clk,     SRst        => SRst,
-            Freq    => Freq,    En      => '1',
+            Freq    => Freq,    En      => En,
             Trg     => Trg,     TxDat   => TxDat,   BusyFlag    => TxBusy,
             RxDat   => RxDat,   RxVld   => open,
             Sck     => Sck,     Mosi    => Mosi,    Miso        => Miso,    Ss  => Ss);

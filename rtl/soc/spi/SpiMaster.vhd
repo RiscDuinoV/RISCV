@@ -127,7 +127,7 @@ begin
     BusyFlag <= '1' when CurrentST = ST_DATA else '0';
     sSckEn <= '1' when CurrentST = ST_DATA else '0'; -- Complete this signal when more modes are added 
     Sck  <= sSck;
-    Mosi <= sMosi;
+    Mosi <= sMosi when CurrentST = ST_DATA else '1';
     Ss   <= sSs;
     RxDat <= sRxDat;
     RxVld <= sRxVld;
