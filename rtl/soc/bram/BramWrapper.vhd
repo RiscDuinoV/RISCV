@@ -53,7 +53,7 @@ begin
             AddrB   => DatXtrCmd.Adr(14 downto 2),
             DoB     => DatXtrRsp.Dat);
     genWe: for i in 0 to 3 generate
-        We(i) <= DatXtrCmd.Sel(i) and DatXtrCmd.We;
+        We(i) <= DatXtrCmd.Sel(i) and DatXtrCmd.We and DatXtrCmd.Stb;
     end generate genWe;
     InstrXtrRsp.CRDY <= InstrXtrCmd.Stb;
     DatXtrRsp.CRDY   <= DatXtrCmd.Stb;
