@@ -12,6 +12,7 @@ entity soc is
         C_UART      : integer range 0 to 4 := 1;
         C_SPI       : integer range 0 to 4 := 1;
         C_I2C       : integer range 0 to 4 := 1;
+        C_GPIO      : integer range 0 to 32 := 1;
         C_BOOTTRAP  : boolean := false
     );
     port 
@@ -29,7 +30,10 @@ entity soc is
         Miso    : in    std_logic_vector(C_SPI - 1 downto 0);
         Ss      : out   std_logic_vector(C_SPI - 1 downto 0);
         Scl     : out   std_logic_vector(C_I2C - 1 downto 0);
-        Sda     : inout std_logic_vector(C_I2C - 1 downto 0)
+        Sda     : inout std_logic_vector(C_I2C - 1 downto 0);
+        Gpio    : inout std_logic_vector(C_GPIO - 1 downto 0);
+        XtrCmd  : out   XtrCmd_t;
+        XtrRsp  : in    XtrRsp_t
     );
 end entity soc;
 
@@ -68,6 +72,9 @@ architecture rtl of soc is
     -- Timers
     signal vTimerXtrCmd     : vXtrCmd_t(0 to 7);
     signal vTimerXtrRsp     : vXtrRsp_t(0 to 7);
+    -- Gpio
+    signal vGpioXtrCmd      : vXtrCmd_t(0 to 31);
+    signal vGpioXtrRsp      : vXtrRsp_t(0 to 31);
     -- Boot trap
     signal BootTrapRstRqst  : std_logic;
 
@@ -125,6 +132,8 @@ begin
             ARst    => ARst,            Clk     => Clk,             SRst => '0', 
             XtrCmd  => vXtrCmdLyr1(1),  XtrRsp  => vXtrRspLyr1(1),
             vXtrCmd => vXtrCmdLyr2,     vXtrRsp => vXtrRspLyr2);
+    XtrCmd <= vXtrCmdLyr2(0);
+    vXtrRspLyr2(0) <= XtrRsp;
 
     -- CXXX XXXX XXXX F000
     -- FXXX XXXX XXXX FFFF
@@ -209,6 +218,25 @@ begin
             XtrCmd  => vTimerXtrCmd(0),     XtrRsp  => vTimerXtrRsp(0),
             Irq     => open);
 
+    -- GPIOs
+    -- CXXX XXXX XXXX F600
+    -- FXXX XXXX XXXX F7FF 
+    uXtrAbrGpio : entity work.XtrAbr
+        generic map (
+            C_MMSB => 11, C_MLSB => 12, C_Slave  => 32)
+        port map (
+            ARst    => ARst,            Clk     => Clk,             SRst => '0', 
+            XtrCmd  => vXtrCmdLyr3(3),  XtrRsp  => vXtrRspLyr3(3),
+            vXtrCmd => vGpioXtrCmd,     vXtrRsp => vGpioXtrRsp);
+
+    genGpio: for i in 1 to C_GPIO generate
+        uXtrGpio : entity work.XtrGpio
+        port map (
+            ARst    => ARst,    Clk => Clk, SRst    => SysRst,
+            XtrCmd  => vGpioXtrCmd(i - 1),  XtrRsp  => vGpioXtrRsp(i - 1),
+            Gpio    => Gpio(i - 1));
+    end generate genGpio;
+    
     genBootTrap: if C_BOOTTRAP = TRUE and C_UART >= 1 generate
         -- Boot trap
         -- CXXX XXXX XXXX FE00
