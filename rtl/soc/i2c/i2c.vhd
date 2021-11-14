@@ -39,6 +39,7 @@ architecture rtl of i2c is
     signal Scl_t        : std_logic;
     signal iWDat        : std_logic_vector(7 downto 0);
     signal iRDat        : std_logic_vector(7 downto 0);
+    signal CoolDown     : std_logic;
 
     attribute mark_debug : string;
     attribute keep : string;
@@ -67,7 +68,7 @@ begin
     process (Clk)
     begin
         if rising_edge(Clk) then
-            if CurrentST /= ST_IDLE and CurrentST /= ST_WAIT then
+            if ((CurrentST /= ST_IDLE) and CurrentST /= ST_WAIT) or (CurrentST = ST_IDLE and CoolDown = '1') then
                 SclReg <= std_logic_vector(unsigned('0' & SclReg(15 downto 0)) + unsigned('0' & Freq));
             else
                 SclReg <= (others => '0');
@@ -211,16 +212,33 @@ begin
                     end if;
                     Sda_t <= '0';
                     Sda_o <= '0';
-            
                 when others =>
                     
             
             end case;
         end if;
     end process;
+    process (Clk, ARst)
+    begin
+        if ARst = '1' then
+            CoolDown <= '1';
+        elsif rising_edge(Clk) then
+            if SRst = '1' then
+                CoolDown <= '1';
+            else
+                if CurrentST = ST_IDLE then
+                    if SclReg(16) = '1' then
+                        CoolDown <= '0';
+                    end if;
+                else
+                    CoolDown <= '1';
+                end if;    
+            end if;
+        end if;
+    end process;
     RDat <= iRDat;
     Scl_t <= '0';
     Scl <= Scl_o;
     Sda <= Sda_o when Sda_t = '0' else 'Z';
-    Busy <= '0' when CurrentST = ST_IDLE or CurrentST = ST_WAIT else '1';
+    Busy <= '0' when (CurrentST = ST_IDLE and CoolDown = '0') or CurrentST = ST_WAIT else '1';
 end architecture rtl;
