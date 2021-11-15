@@ -4,12 +4,12 @@ use IEEE.numeric_std.all;
 use IEEE.std_logic_unsigned.all;
 
 entity SpiMaster is
-    port 
-    (
+    port (
         ARst    : in    std_logic := '0';
         Clk     : in    std_logic;
         SRst    : in    std_logic := '0';
         Freq    : in    std_logic_vector(15 downto 0);
+        Mode    : in    std_logic_vector(1 downto 0);
         En      : in    std_logic;
         Trg     : in    std_logic;
         TxDat   : in    std_logic_vector(7 downto 0);
@@ -25,8 +25,7 @@ end entity SpiMaster;
 
 architecture rtl of SpiMaster is
     type SPI_ST             is (ST_IDLE, ST_DATA);
-    signal sSckReg          : std_logic_vector(16 downto 0);
-    signal sSckEn           : std_logic;
+    signal sSckCnt          : std_logic_vector(16 downto 0);
     signal CurrentST        : SPI_ST;
     signal sBitCnt          : std_logic_vector(7 downto 0);
     signal sSck             : std_logic;
@@ -37,6 +36,7 @@ architecture rtl of SpiMaster is
     signal sTxDat           : std_logic_vector(7 downto 0);
     signal sRxDat           : std_logic_vector(7 downto 0);
     signal sRxVld           : std_logic;
+    signal ShiftEn          : std_logic;
 begin
     process (Clk)
     begin
@@ -52,19 +52,25 @@ begin
             if SRst = '1' then
                 sSck <= '0';
             else
-                if sSckEn = '1' then
-                    sSckReg <= ('0' & sSckReg(15 downto 0)) + ('0' & Freq);
+                if CurrentST /= ST_IDLE then
+                    sSckCnt <= ('0' & sSckCnt(15 downto 0)) + ('0' & Freq);
                 else
-                    sSckReg <= (others => '0');
+                    sSckCnt <= (others => '0');
                 end if;
-                if sSckReg(16) = '1' then
+                if sSckCnt(16) = '1' then
                     sSck <= not sSck;
+                elsif CurrentST = ST_IDLE then
+                    if Mode(1) = '1' then
+                        sSck <= '1';
+                    else
+                        sSck <= '0';
+                    end if;
                 end if;
             end if;
         end if;
     end process pGenFreq;
-    sSckRE <= '1' when sSckReg(16) = '1' and sSck = '0' else '0';
-    sSckFE <= '1' when sSckReg(16) = '1' and sSck = '1' else '0';
+    sSckRE <= '1' when sSckCnt(16) = '1' and sSck = '0' else '0';
+    sSckFE <= '1' when sSckCnt(16) = '1' and sSck = '1' else '0';
     process (Clk, ARst)
     begin
         if ARst = '1' then
@@ -81,7 +87,7 @@ begin
                             end if;
                         end if;
                     when ST_DATA =>
-                        if sBitCnt(7) = '1' and sSckFE = '1' then
+                        if sBitCnt(7) = '1' and ((sSckFE = '1' and Mode(1) = '0') or (sSckRE = '1' and Mode(1) = '1')) then
                             CurrentST <= ST_IDLE;
                         end if;
                     when others =>
@@ -95,37 +101,58 @@ begin
         variable vTxDat : std_logic_vector(7 downto 0);
     begin
         if rising_edge(Clk) then
-            case CurrentST is
-                when ST_IDLE =>
-                    sBitCnt <= x"01";
-                    sRxVld  <= '0';
-                    if En = '1' then
-                        sSs <= '1';
-                    else
-                        sSs <= '0';
+            if Trg = '1' then
+                sTxDat <= TxDat;
+            end if;
+            if CurrentST = ST_IDLE then
+                sBitCnt <= x"01";
+                if En = '1' then
+                    sSs <= '1';
+                else
+                    sSs <= '0';
+                end if;
+                ShiftEn <= '0';
+            end if;
+            if Mode(1) = '0' then
+                if sSckRE = '1' then
+                    ShiftEn <= '1';
+                end if;
+            else
+                if sSckFE = '1' then
+                    ShiftEn <= '1';
+                end if;
+            end if;
+            if Mode(0) = '0' then
+                if sSckRE = '1' then
+                    sRxDat <= sRxDat(6 downto 0) & sMiso;
+                    if sBitCnt(7) = '1' then
+                        sRxVld <= '1';
                     end if;
-                    sTxDat <= TxDat;
-                    vTxDat := TxDat;
-                when ST_DATA => -- Complete here when more modes are added
-                    if sSckFE = '1' then
-                        sBitCnt <= sBitCnt(6 downto 0) & sBitCnt(7);
-                        sTxDat <= sTxDat(6 downto 0) & '0';
-                    end if; 
-                    if sSckRE = '1' then
-                        sRxDat <= sRxDat(6 downto 0) & sMiso;
-                        if sBitCnt(7) = '1' then
-                            sRxVld <= '1';
-                        end if;
-                    else
-                        sRxVld <= '0';
+                else
+                    sRxVld <= '0';
+                end if;
+                if sSckFE = '1' and ShiftEn = '1' then
+                    sTxDat <= sTxDat(6 downto 0) & '0';
+                    sBitCnt <= sBitCnt(6 downto 0) & sBitCnt(7);
+                end if;
+            else
+                if sSckRE = '1' and ShiftEn = '1' then
+                    sTxDat <= sTxDat(6 downto 0) & '0';
+                    sBitCnt <= sBitCnt(6 downto 0) & sBitCnt(7);
+                end if;
+                if sSckFE = '1' then
+                    sRxDat <= sRxDat(6 downto 0) & sMiso;
+                    if sBitCnt(7) = '1' then
+                        sRxVld <= '1';
                     end if;
-                when others =>
-            end case;
+                else
+                    sRxVld <= '0';
+                end if;
+            end if;
         end if;
     end process;
     sMosi <= sTxDat(7);
     BusyFlag <= '1' when CurrentST = ST_DATA else '0';
-    sSckEn <= '1' when CurrentST = ST_DATA else '0'; -- Complete this signal when more modes are added 
     Sck  <= sSck;
     Mosi <= sMosi when CurrentST = ST_DATA else '1';
     Ss   <= sSs;
