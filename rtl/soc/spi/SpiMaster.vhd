@@ -28,8 +28,9 @@ architecture rtl of SpiMaster is
     signal sSckCnt          : std_logic_vector(16 downto 0);
     signal CurrentST        : SPI_ST;
     signal sBitCnt          : std_logic_vector(7 downto 0);
+    signal dBitCnt          : std_logic;
     signal sSck             : std_logic;
-    signal sSckRE, sSckFE   : std_logic;
+    signal sSckRE, sSckFE   : std_logic_vector(1 downto 0);
     signal sMosi            : std_logic;
     signal sMiso            : std_logic;
     signal sSs              : std_logic;
@@ -69,8 +70,16 @@ begin
             end if;
         end if;
     end process pGenFreq;
-    sSckRE <= '1' when sSckCnt(16) = '1' and sSck = '0' else '0';
-    sSckFE <= '1' when sSckCnt(16) = '1' and sSck = '1' else '0';
+    sSckRE(0) <= '1' when sSckCnt(16) = '1' and sSck = '0' else '0';
+    sSckFE(0) <= '1' when sSckCnt(16) = '1' and sSck = '1' else '0';
+    process (Clk)
+    begin
+        if rising_edge(Clk) then
+            sSckRE(1) <= sSckRE(0);
+            sSckFE(1) <= sSckFE(0);
+            dBitCnt <= sBitCnt(7);
+        end if;
+    end process;
     process (Clk, ARst)
     begin
         if ARst = '1' then
@@ -87,7 +96,7 @@ begin
                             end if;
                         end if;
                     when ST_DATA =>
-                        if sBitCnt(7) = '1' and ((sSckFE = '1' and Mode(1) = '0') or (sSckRE = '1' and Mode(1) = '1')) then
+                        if sBitCnt(7) = '1' and ((sSckFE(0) = '1' and Mode(1) = '0') or (sSckRE(0) = '1' and Mode(1) = '1')) then
                             CurrentST <= ST_IDLE;
                         end if;
                     when others =>
@@ -114,35 +123,35 @@ begin
                 ShiftEn <= '0';
             end if;
             if Mode(1) = '0' then
-                if sSckRE = '1' then
+                if sSckRE(0) = '1' then
                     ShiftEn <= '1';
                 end if;
             else
-                if sSckFE = '1' then
+                if sSckFE(0) = '1' then
                     ShiftEn <= '1';
                 end if;
             end if;
             if Mode(0) = '0' then
-                if sSckRE = '1' then
+                if sSckRE(1) = '1' then
                     sRxDat <= sRxDat(6 downto 0) & sMiso;
-                    if sBitCnt(7) = '1' then
+                    if dBitCnt = '1' then
                         sRxVld <= '1';
                     end if;
                 else
                     sRxVld <= '0';
                 end if;
-                if sSckFE = '1' and ShiftEn = '1' then
+                if sSckFE(0) = '1' and ShiftEn = '1' then
                     sTxDat <= sTxDat(6 downto 0) & '0';
                     sBitCnt <= sBitCnt(6 downto 0) & sBitCnt(7);
                 end if;
             else
-                if sSckRE = '1' and ShiftEn = '1' then
+                if sSckRE(0) = '1' and ShiftEn = '1' then
                     sTxDat <= sTxDat(6 downto 0) & '0';
                     sBitCnt <= sBitCnt(6 downto 0) & sBitCnt(7);
                 end if;
-                if sSckFE = '1' then
+                if sSckFE(1) = '1' then
                     sRxDat <= sRxDat(6 downto 0) & sMiso;
-                    if sBitCnt(7) = '1' then
+                    if dBitCnt = '1' then
                         sRxVld <= '1';
                     end if;
                 else
