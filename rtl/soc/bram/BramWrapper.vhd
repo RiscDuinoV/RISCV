@@ -4,9 +4,11 @@ use IEEE.numeric_std.all;
 
 library work;
 use work.XtrDef.all;
+use work.utils.all;
 
 entity BramWrapper is
     generic (
+        C_RAM_SIZE  : integer := 1024;
         C_INIT_FILE : string := "none"
     );
     port (
@@ -19,6 +21,7 @@ entity BramWrapper is
 end entity BramWrapper;
 
 architecture rtl of BramWrapper is
+    constant C_ADDR_WIDTH : integer := bitWidth(C_RAM_SIZE / 4);
     signal DatStb       : std_logic;
     signal DebugAddr    : std_logic_vector(31 downto 0);
     signal DebugRDat    : std_logic_vector(31 downto 0);
@@ -37,8 +40,8 @@ architecture rtl of BramWrapper is
 begin
     uBram : entity work.ram_1x2
         generic map (
-            C_RAM_SIZE      => 8192,
-            C_ADDR_WIDTH    => 13,
+            C_RAM_SIZE      => C_RAM_SIZE / 4,
+            C_ADDR_WIDTH    => C_ADDR_WIDTH,
             C_BYTE_WIDTH    => 8,
             C_NB_BYTE       => 4,
             C_INIT_FILE     => C_INIT_FILE)
@@ -46,11 +49,11 @@ begin
             Clk     => Clk,
             En      => '1',
             We      => We,
-            Addr    => DatXtrCmd.Adr(14 downto 2),
+            Addr    => DatXtrCmd.Adr(C_ADDR_WIDTH + 1 downto 2),
             Di      => DatXtrCmd.Dat,
-            AddrA   => InstrXtrCmd.Adr(14 downto 2),
+            AddrA   => InstrXtrCmd.Adr(C_ADDR_WIDTH + 1 downto 2),
             DoA     => InstrXtrRsp.Dat,
-            AddrB   => DatXtrCmd.Adr(14 downto 2),
+            AddrB   => DatXtrCmd.Adr(C_ADDR_WIDTH + 1 downto 2),
             DoB     => DatXtrRsp.Dat);
     genWe: for i in 0 to 3 generate
         We(i) <= DatXtrCmd.Sel(i) and DatXtrCmd.We and DatXtrCmd.Stb;

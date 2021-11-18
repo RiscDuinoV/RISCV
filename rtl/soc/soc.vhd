@@ -8,6 +8,7 @@ use work.XtrDef.all;
 entity soc is
     generic (
         C_FREQ      : integer := 50_000_000;
+        C_RAM_SIZE  : integer := 8192;
         C_INIT_FILE : string  := "none";
         C_UART      : integer range 0 to 4 := 1;
         C_SPI       : integer range 0 to 4 := 1;
@@ -115,7 +116,7 @@ begin
 
     uBram : entity work.BramWrapper
         generic map (
-            C_INIT_FILE => C_INIT_FILE
+            C_RAM_SIZE => C_RAM_SIZE, C_INIT_FILE => C_INIT_FILE
         )
         port map (
             Clk         => Clk,
