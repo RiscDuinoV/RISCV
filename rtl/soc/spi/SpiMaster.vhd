@@ -56,22 +56,22 @@ begin
                 if CurrentST /= ST_IDLE then
                     sSckCnt <= ('0' & sSckCnt(15 downto 0)) + ('0' & Freq);
                 else
-                    sSckCnt <= (others => '0');
+                    sSckCnt <= '0' & Freq;
                 end if;
-                if sSckCnt(16) = '1' then
-                    sSck <= not sSck;
-                elsif CurrentST = ST_IDLE then
+                if CurrentST = ST_IDLE then
                     if Mode(1) = '1' then
                         sSck <= '1';
                     else
                         sSck <= '0';
                     end if;
+                elsif sSckCnt(16) = '1' then
+                    sSck <= not sSck;
                 end if;
             end if;
         end if;
     end process pGenFreq;
-    sSckRE(0) <= '1' when sSckCnt(16) = '1' and sSck = '0' else '0';
-    sSckFE(0) <= '1' when sSckCnt(16) = '1' and sSck = '1' else '0';
+    sSckRE(0) <= '1' when sSckCnt(16) = '1' and sSck = '0' and CurrentST /= ST_IDLE else '0';
+    sSckFE(0) <= '1' when sSckCnt(16) = '1' and sSck = '1' and CurrentST /= ST_IDLE else '0';
     process (Clk)
     begin
         if rising_edge(Clk) then
@@ -100,7 +100,6 @@ begin
                             CurrentST <= ST_IDLE;
                         end if;
                     when others =>
-                        CurrentST <= ST_IDLE;
                 end case;
             end if;
         end if;
@@ -115,11 +114,7 @@ begin
             end if;
             if CurrentST = ST_IDLE then
                 sBitCnt <= x"01";
-                if En = '1' then
-                    sSs <= '1';
-                else
-                    sSs <= '0';
-                end if;
+                sSs <= En;
                 ShiftEn <= '0';
             end if;
             if Mode(1) = '0' then
@@ -131,20 +126,7 @@ begin
                     ShiftEn <= '1';
                 end if;
             end if;
-            if Mode(0) = '0' then
-                if sSckRE(1) = '1' then
-                    sRxDat <= sRxDat(6 downto 0) & sMiso;
-                    if dBitCnt = '1' then
-                        sRxVld <= '1';
-                    end if;
-                else
-                    sRxVld <= '0';
-                end if;
-                if sSckFE(0) = '1' and ShiftEn = '1' then
-                    sTxDat <= sTxDat(6 downto 0) & '0';
-                    sBitCnt <= sBitCnt(6 downto 0) & sBitCnt(7);
-                end if;
-            else
+            if (Mode(0) xor Mode(1)) = '1' then
                 if sSckRE(0) = '1' and ShiftEn = '1' then
                     sTxDat <= sTxDat(6 downto 0) & '0';
                     sBitCnt <= sBitCnt(6 downto 0) & sBitCnt(7);
@@ -157,13 +139,26 @@ begin
                 else
                     sRxVld <= '0';
                 end if;
+            else
+                if sSckRE(1) = '1' then
+                    sRxDat <= sRxDat(6 downto 0) & sMiso;
+                    if dBitCnt = '1' then
+                        sRxVld <= '1';
+                    end if;
+                else
+                    sRxVld <= '0';
+                end if;
+                if sSckFE(0) = '1' and ShiftEn = '1' then
+                    sTxDat <= sTxDat(6 downto 0) & '0';
+                    sBitCnt <= sBitCnt(6 downto 0) & sBitCnt(7);
+                end if;
             end if;
         end if;
     end process;
     sMosi <= sTxDat(7);
     BusyFlag <= '1' when CurrentST = ST_DATA else '0';
     Sck  <= sSck;
-    Mosi <= sMosi when CurrentST = ST_DATA else '1';
+    Mosi <= sMosi;-- when CurrentST = ST_DATA else '1';
     Ss   <= sSs;
     RxDat <= sRxDat;
     RxVld <= sRxVld;

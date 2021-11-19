@@ -71,7 +71,7 @@ begin
             end if;
         end if;
     end process pWriteMem;
-    Trg <= '1' when XtrCmd.Stb = '1' and XtrCmd.We = '1' and XtrCmd.Sel(0) = '1' else '0';
+    Trg <= '1' when XtrCmd.Stb = '1' and XtrCmd.We = '1' and XtrCmd.Adr(2) = '0' else '0';
     TxDat <= XtrCmd.Dat(7 downto 0);
     uSpiMaster : entity work.SpiMaster
         port map (
