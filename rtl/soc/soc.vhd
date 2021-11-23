@@ -13,11 +13,10 @@ entity soc is
         C_UART      : integer range 0 to 4 := 1;
         C_SPI       : integer range 0 to 4 := 1;
         C_I2C       : integer range 0 to 4 := 1;
-        C_GPIO      : integer range 0 to 32 := 1;
+        C_GPIO      : integer range 0 to 64 := 1;
         C_BOOTTRAP  : boolean := false
     );
-    port 
-    (
+    port (
         ARst    : in    std_logic;
         Clk     : in    std_logic;
         Tck     : in    std_logic := '0';
@@ -74,8 +73,8 @@ architecture rtl of soc is
     signal vTimerXtrCmd     : vXtrCmd_t(0 to 7);
     signal vTimerXtrRsp     : vXtrRsp_t(0 to 7);
     -- Gpio
-    signal vGpioXtrCmd      : vXtrCmd_t(0 to 31);
-    signal vGpioXtrRsp      : vXtrRsp_t(0 to 31);
+    signal vGpioXtrCmd      : vXtrCmd_t(0 to 63);
+    signal vGpioXtrRsp      : vXtrRsp_t(0 to 63);
     -- Boot trap
     signal BootTrapRstRqst  : std_logic;
 
@@ -224,7 +223,7 @@ begin
     -- FXXX XXXX XXXX F7FF 
     uXtrAbrGpio : entity work.XtrAbr
         generic map (
-            C_MMSB => 11, C_MLSB => 12, C_Slave  => 32)
+            C_MMSB => 8, C_MLSB => 9, C_Slave  => 64)
         port map (
             ARst    => ARst,            Clk     => Clk,             SRst => '0', 
             XtrCmd  => vXtrCmdLyr3(3),  XtrRsp  => vXtrRspLyr3(3),
