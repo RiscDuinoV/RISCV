@@ -31,9 +31,7 @@ object GenVexRiscv
                 regFileReadyKind = plugin.SYNC,
                 zeroBoot = false
             ),
-            new IntAluPlugin(
-                earlyInjection = false
-            ),
+            new IntAluPlugin,
             new SrcPlugin(
                 separatedAddSub = false,
                 executeInsertion = false
@@ -73,7 +71,7 @@ object GenVexRiscv
             onlyStdLogicVectorAtTopLevelIo = true,
             targetDirectory = "../XtrRiscv/rtl/src/cpu"
         ).generate{
-            val cpuConfig = VexRiscvConfig(config(withMulDiv = false, barrielShifter = false, withDebug = true))
+            val cpuConfig = VexRiscvConfig(config(withMulDiv = false, barrielShifter = false, withDebug = false))
             val cpu = new VexRiscv(config = cpuConfig)
             cpu.rework{
                 for (plugin <- cpuConfig.plugins) plugin match {
