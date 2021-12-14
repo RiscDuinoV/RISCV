@@ -1,0 +1,3 @@
+[submodule "rtl/scala/ext/VexRiscv"]
+	path = rtl/scala/ext/VexRiscv
+	url = https://github.com/SpinalHDL/VexRiscv

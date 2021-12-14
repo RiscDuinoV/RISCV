@@ -1,15 +1,24 @@
-ThisBuild / organization := "test"
+val spinalVersion = "1.6.0"
 
-ThisBuild / scalaVersion := "2.11.12"
-lazy val vexriscv = (project in file("."))
-  .settings(
-    name := "vexriscv",
-    version := "0.1",
-    libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.5" % "test",
-    run / connectInput := true,
-    outputStrategy := Some(StdoutOutput),
+lazy val root = (project in file(".")).
+    settings(
+        inThisBuild(List(
+            organization := "com.github.spinalhdl",
+            scalaVersion := "2.11.12",
+            version      := "1.0.0"
+        )),
+    libraryDependencies ++= Seq(
+          "com.github.spinalhdl" % "spinalhdl-core_2.11" % spinalVersion,
+          "com.github.spinalhdl" % "spinalhdl-lib_2.11" % spinalVersion,
+          compilerPlugin("com.github.spinalhdl" % "spinalhdl-idsl-plugin_2.11" % spinalVersion),
+          "org.scalatest" %% "scalatest" % "3.2.5",
+          "org.yaml" % "snakeyaml" % "1.8"
+        ),
+    name := "XtrRiscv"
   ).dependsOn(vexRiscv)
 
-lazy val vexRiscv = RootProject(uri("git://github.com/SpinalHDL/VexRiscv#68e704f3092be640aa92c876cf78702a83167f94"))
+lazy val vexRiscv = RootProject(file("ext/VexRiscv"))
 
 fork := true
+
+connectInput in run := true

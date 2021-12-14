@@ -66,10 +66,10 @@ object GenVexRiscv
     def main(args: Array[String])
     {
         SpinalConfig(
-            mode = VHDL,
+            mode = Verilog,
             defaultConfigForClockDomains = ClockDomainConfig.apply(resetKind = spinal.core.SYNC),
             onlyStdLogicVectorAtTopLevelIo = true,
-            targetDirectory = "../XtrRiscv/rtl/src/cpu"
+            targetDirectory = "../cpu"
         ).generate{
             val cpuConfig = VexRiscvConfig(config(withMulDiv = false, barrielShifter = false, withDebug = false))
             val cpu = new VexRiscv(config = cpuConfig)
