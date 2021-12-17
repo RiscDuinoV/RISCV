@@ -27,7 +27,7 @@ entity soc is
         Tx      : out   std_logic_vector(C_UART - 1 downto 0);
         Sck     : out   std_logic_vector(C_SPI - 1 downto 0);
         Mosi    : out   std_logic_vector(C_SPI - 1 downto 0);
-        Miso    : in    std_logic_vector(C_SPI - 1 downto 0);
+        Miso    : in    std_logic_vector(C_SPI - 1 downto 0) := (others => '0');
         Ss      : out   std_logic_vector(C_SPI - 1 downto 0);
         Scl     : out   std_logic_vector(C_I2C - 1 downto 0);
         Sda     : inout std_logic_vector(C_I2C - 1 downto 0);

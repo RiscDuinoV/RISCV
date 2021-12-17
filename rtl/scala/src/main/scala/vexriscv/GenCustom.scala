@@ -71,7 +71,7 @@ object GenVexRiscv
             onlyStdLogicVectorAtTopLevelIo = true,
             targetDirectory = "../cpu"
         ).generate{
-            val cpuConfig = VexRiscvConfig(config(withMulDiv = false, barrielShifter = false, withDebug = false))
+            val cpuConfig = VexRiscvConfig(config(withMulDiv = false, barrielShifter = false, withDebug = true))
             val cpu = new VexRiscv(config = cpuConfig)
             cpu.rework{
                 for (plugin <- cpuConfig.plugins) plugin match {
