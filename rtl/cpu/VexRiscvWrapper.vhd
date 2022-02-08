@@ -3,29 +3,28 @@ use IEEE.std_logic_1164.all;
 use IEEE.numeric_std.all;
 
 library work;
-use work.XtrDef.all;
+use work.xtr_def.all;
 
-entity VexRiscvWrapper is
-    port 
-    (
-        Clk         : in    std_logic;
-        SRst        : in    std_logic;
-        Tck         : in    std_logic;
-        Tdi         : in    std_logic;
-        Tdo         : out   std_logic;
-        Tms         : in    std_logic;
-        InstrXtrCmd : out   XtrCmd_t;
-        InstrXtrRsp : in    XtrRsp_t;
-        DatXtrCmd   : out   XtrCmd_t;
-        DatXtrRsp   : in    XtrRsp_t;
-        ExternalIrq : in    std_logic;
-        TimerIrq    : in    std_logic;
-        SoftwareIrq : in    std_logic
+entity vexriscv_wrapper is
+    port (
+        clk_i : in std_logic;
+        srst_i : in std_logic;
+        tck_i : in std_logic;
+        tdi_i : in std_logic;
+        tdo_o : out std_logic;
+        tms_i : in std_logic;
+        instr_xtr_cmd_o : out xtr_cmd_t;
+        instr_xtr_rsp_i : in xtr_rsp_t;
+        dat_xtr_cmd_o : out xtr_cmd_t;
+        dat_xtr_rsp_i : in xtr_rsp_t;
+        external_irq_i : in std_logic;
+        timer_irq_i : in std_logic;
+        software_irq_i : in std_logic
     );
-end entity VexRiscvWrapper;
+end entity vexriscv_wrapper;
 
-architecture rtl of VexRiscvWrapper is
-    function wb_get_data_sel(size : in std_logic_vector(1 downto 0); address : in std_logic_vector)
+architecture rtl of vexriscv_wrapper is
+    function get_data_sel(size : in std_logic_vector(1 downto 0); address : in std_logic_vector(1 downto 0))
         return std_logic_vector is
     begin
         case size is
@@ -51,10 +50,9 @@ architecture rtl of VexRiscvWrapper is
             when others =>
                 return b"1111";
         end case;
-    end function wb_get_data_sel;
+    end function get_data_sel;
     component VexRiscv is
-        port
-        (
+        port (
             reset                       : in    std_logic;
             clk                         : in    std_logic;
             iBus_cmd_payload_pc         : out   std_logic_vector(31 downto 0);
@@ -119,12 +117,11 @@ architecture rtl of VexRiscvWrapper is
     attribute mark_debug of dBus_rsp_ready : signal is "true";
     
 begin
-    reset <= SRst or debug_resetOut;
-    core : VexRiscv 
-        port map
-        (
+    reset <= srst_i or debug_resetOut;
+    u_core : component vexriscv 
+        port map (
             reset                       => reset,
-            clk                         => Clk,
+            clk                         => clk_i,
             iBus_cmd_payload_pc         => iBus_cmd_payload_pc,
             iBus_cmd_valid              => iBus_cmd_valid,
             iBus_cmd_ready              => iBus_cmd_ready,
@@ -140,36 +137,36 @@ begin
             dBus_rsp_ready              => dBus_rsp_ready,
             dBus_rsp_error              => dBus_rsp_error,
             dBus_rsp_data               => dBus_rsp_data,
-            timerInterrupt              => TimerIrq,
-            externalInterrupt           => ExternalIrq,
-            softwareInterrupt           => SoftwareIrq,
+            timerInterrupt              => timer_irq_i,
+            externalInterrupt           => external_irq_i,
+            softwareInterrupt           => software_irq_i,
             debugReset                  => '0',
             debug_resetOut              => debug_resetOut,
-            jtag_tck                    => Tck,
-            jtag_tdo                    => Tdo,
-            jtag_tdi                    => Tdi,
-            jtag_tms                    => Tms
+            jtag_tck                    => tck_i,
+            jtag_tdo                    => tdo_o,
+            jtag_tdi                    => tdi_i,
+            jtag_tms                    => tms_i
         );
-    dBus_cmd_payload_sel    <= wb_get_data_sel(dBus_cmd_payload_size, dBus_cmd_payload_address(1 downto 0));
+    dBus_cmd_payload_sel <= get_data_sel(dBus_cmd_payload_size, dBus_cmd_payload_address(1 downto 0));
     
     
-    InstrXtrCmd.ADR         <= iBus_cmd_payload_pc;
-    InstrXtrCmd.STB         <= iBus_cmd_valid;
-    InstrXtrCmd.WE          <= '0';
-    iBus_cmd_ready          <= InstrXtrRsp.CRDY;
-    iBus_rsp_valid          <= InstrXtrRsp.RRDY;
-    iBus_rsp_payload_inst   <= InstrXtrRsp.DAT;
-    iBus_rsp_payload_error  <= '0';
+    instr_xtr_cmd_o.adr <= iBus_cmd_payload_pc;
+    instr_xtr_cmd_o.vld <= iBus_cmd_valid;
+    instr_xtr_cmd_o.we <= '0';
+    iBus_cmd_ready <= instr_xtr_rsp_i.rdy;
+    iBus_rsp_valid <= instr_xtr_rsp_i.vld;
+    iBus_rsp_payload_inst <= instr_xtr_rsp_i.dat;
+    iBus_rsp_payload_error <= '0';
 
-    DatXtrCmd.ADR           <= dBus_cmd_payload_address;
-    DatXtrCmd.DAT           <= dBus_cmd_payload_data;
-    DatXtrCmd.STB           <= dBus_cmd_valid;
-    DatXtrCmd.WE            <= dBus_cmd_payload_wr and dBus_cmd_valid;
-    DatXtrCmd.SEL           <= dBus_cmd_payload_sel;
+    dat_xtr_cmd_o.adr <= dBus_cmd_payload_address;
+    dat_xtr_cmd_o.dat <= dBus_cmd_payload_data;
+    dat_xtr_cmd_o.vld <= dBus_cmd_valid;
+    dat_xtr_cmd_o.we <= dBus_cmd_payload_wr and dBus_cmd_valid;
+    dat_xtr_cmd_o.sel <= dBus_cmd_payload_sel;
     
-    dBus_cmd_ready          <= DatXtrRsp.CRDY;
-    dBus_rsp_ready          <= DatXtrRsp.RRDY;
-    dBus_rsp_data           <= DatXtrRsp.DAT;
-    dBus_rsp_error          <= '0';
+    dBus_cmd_ready <= dat_xtr_rsp_i.rdy;
+    dBus_rsp_ready <= dat_xtr_rsp_i.vld;
+    dBus_rsp_data <= dat_xtr_rsp_i.dat;
+    dBus_rsp_error <= '0';
     
 end architecture rtl;

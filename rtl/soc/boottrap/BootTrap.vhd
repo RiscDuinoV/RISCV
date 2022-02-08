@@ -2,48 +2,48 @@ library IEEE;
 use IEEE.std_logic_1164.all;
 use IEEE.numeric_std.all;
 
-entity BootTrap is
+entity boot_trap is
     port (
-        ARst    : in    std_logic := '0';
-        Clk     : in    std_logic;
-        SRst    : in    std_logic := '0';
-        Baud    : in    std_logic;
-        RxVld   : in    std_logic;
-        RxDat   : in    std_logic_vector(7 downto 0);
-        Trap    : out   std_logic
+        arst_i : in std_logic := '0';
+        clk_i : in std_logic;
+        srst_i : in std_logic := '0';
+        baud_en_i : in std_logic;
+        rx_vld_i : in std_logic;
+        rx_dat_i : in std_logic_vector(7 downto 0);
+        trap_o : out std_logic
     );
-end entity BootTrap;
+end entity boot_trap;
 
-architecture rtl of BootTrap is
-    constant C_CHAR_SEQ             : std_logic_vector(7 downto 0) := x"2B";
-    constant TIMER_CNT_LOAD_VALUE   : integer := 16*8*3;
-    type BOOTTRAP_ST                is (ST_IDLE, ST_TYPE);
-    signal CurrentST                : BOOTTRAP_ST;
-    signal WordCnt                  : std_logic_vector(2 downto 0);
-    signal TimerCnt                 : std_logic_vector(8 downto 0);
-    signal Timeout                  : std_logic;
+architecture rtl of boot_trap is
+    constant C_CHAR_SEQ : std_logic_vector(7 downto 0) := x"2B";
+    constant TIMER_CNT_LOAD_VALUE : integer := 8*3;
+    type boot_trap_st is (st_idle, st_type);
+    signal current_st : boot_trap_st;
+    signal word_cnt : std_logic_vector(2 downto 0);
+    signal timer_cnt : std_logic_vector(8 downto 0);
+    signal timeout : std_logic;
     -- Debug
-    signal iBaud                    : std_logic;
-    signal iRxVld                   : std_logic;
-    signal iRxDat                   : std_logic_vector(7 downto 0);
+    signal baud_en : std_logic;
+    signal rx_vld : std_logic;
+    signal rx_dat : std_logic_vector(7 downto 0);
 begin
     
-    pFsm: process(Clk, ARst)
+    pFsm: process(clk_i, arst_i)
     begin
-        if ARst = '1' then
-            CurrentST <= ST_IDLE;
-        elsif rising_edge(Clk) then
-            if SRst = '1' then
-                CurrentST <= ST_IDLE;
+        if arst_i = '1' then
+            current_st <= st_idle;
+        elsif rising_edge(clk_i) then
+            if srst_i = '1' then
+                current_st <= st_idle;
             else
-                case CurrentST is
-                    when ST_IDLE =>
-                        if WordCnt(WordCnt'left) = '1' and RxVld = '1' and RxDat = C_CHAR_SEQ then
-                            CurrentST <= ST_TYPE;
+                case current_st is
+                    when st_idle =>
+                        if word_cnt(word_cnt'left) = '1' and rx_vld_i = '1' and rx_dat_i = C_CHAR_SEQ then
+                            current_st <= st_type;
                         end if;
-                    when ST_TYPE =>
-                        if RxVld = '1' or Timeout = '1' then
-                            CurrentST <= ST_IDLE;
+                    when st_type =>
+                        if rx_vld_i = '1' or timeout = '1' then
+                            current_st <= st_idle;
                         end if;
                     when others =>
                 end case;
@@ -51,40 +51,40 @@ begin
         end if;
     end process pFsm;
     
-    process (Clk, ARst)
+    process (clk_i, arst_i)
     begin
-        if ARst = '1' then
-            TimerCnt <= std_logic_vector(to_unsigned(TIMER_CNT_LOAD_VALUE, TimerCnt'length)); -- 3 bytes before setting Timeout
-            WordCnt  <= "001";
-        elsif rising_edge(Clk) then
-            if SRst = '1' then
-                TimerCnt <= std_logic_vector(to_unsigned(TIMER_CNT_LOAD_VALUE, TimerCnt'length));
-                WordCnt  <= "001";
+        if arst_i = '1' then
+            timer_cnt <= std_logic_vector(to_unsigned(TIMER_CNT_LOAD_VALUE, timer_cnt'length)); -- 3 bytes before setting timeout
+            word_cnt  <= "001";
+        elsif rising_edge(clk_i) then
+            if srst_i = '1' then
+                timer_cnt <= std_logic_vector(to_unsigned(TIMER_CNT_LOAD_VALUE, timer_cnt'length));
+                word_cnt  <= "001";
             else
-                if RxVld = '1' or Timeout = '1' then
-                    TimerCnt <= std_logic_vector(to_unsigned(TIMER_CNT_LOAD_VALUE, TimerCnt'length));
-                elsif Baud = '1' then
-                    TimerCnt <= std_logic_vector(unsigned(TimerCnt) - "1");
+                if rx_vld_i = '1' or timeout = '1' then
+                    timer_cnt <= std_logic_vector(to_unsigned(TIMER_CNT_LOAD_VALUE, timer_cnt'length));
+                elsif baud_en_i = '1' then
+                    timer_cnt <= std_logic_vector(unsigned(timer_cnt) - "1");
                 end if;
-                if CurrentST = ST_IDLE then
-                    if RxVld = '1' then
-                        WordCnt <= WordCnt(1 downto 0) & WordCnt(2);
-                    elsif Timeout = '1' then
-                        WordCnt <= "001";
+                if current_st = st_idle then
+                    if rx_vld_i = '1' then
+                        word_cnt <= word_cnt(1 downto 0) & word_cnt(2);
+                    elsif timeout = '1' then
+                        word_cnt <= "001";
                     end if;
                 end if;
             end if;
         end if;
     end process;
-    Timeout <= '1' when unsigned(TimerCnt) = 0 and Baud = '1' else '0';
-    Trap <= '1' when CurrentST = ST_TYPE and RxVld = '1' else '0';
+    timeout <= '1' when unsigned(timer_cnt) = 0 and baud_en_i = '1' else '0';
+    trap_o <= '1' when current_st = st_type and rx_vld_i = '1' else '0';
 
-    process (Clk)
+    process (clk_i)
     begin
-        if rising_edge(Clk) then
-            iBaud   <= Baud;
-            iRxVld  <= RxVld;
-            iRxDat  <= RxDat;
+        if rising_edge(clk_i) then
+            baud_en   <= baud_en_i;
+            rx_vld  <= rx_vld_i;
+            rx_dat  <= rx_dat_i;
         end if;
     end process;
 end architecture rtl;

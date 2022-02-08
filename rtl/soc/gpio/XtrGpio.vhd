@@ -2,50 +2,50 @@ library IEEE;
 use IEEE.std_logic_1164.all;
 use IEEE.numeric_std.all;
 
-use work.XtrDef.all;
+use work.xtr_def.all;
 
-entity XtrGpio is
+entity xtr_gpio is
     port (
-        ARst    : in    std_logic := '0';
-        Clk     : in    std_logic;
-        SRst    : in    std_logic := '0';
-        XtrCmd  : in    XtrCmd_t;
-        XtrRsp  : out   XtrRsp_t;
-        Gpio    : inout std_logic
+        arst_i : in std_logic := '0';
+        clk_i : in std_logic;
+        srst_i : in std_logic := '0';
+        xtr_cmd_i : in xtr_cmd_t;
+        xtr_rsp_o : out xtr_rsp_t;
+        gpio_io : inout std_logic
     );
-end entity XtrGpio;
+end entity xtr_gpio;
 
-architecture rtl of XtrGpio is
+architecture rtl of xtr_gpio is
     signal pin_i, pin_o : std_logic;
     signal pin_mode     : std_logic_vector(0 downto 0);
 begin
-    process (Clk)
+    process (clk_i)
     begin
-        if rising_edge(Clk) then
-            pin_i <= Gpio;
+        if rising_edge(clk_i) then
+            pin_i <= gpio_io;
             if pin_mode = "1" then
-                Gpio <= pin_o;
+                gpio_io <= pin_o;
             else
-                Gpio <= 'Z';
+                gpio_io <= 'Z';
             end if;
         end if;
     end process;
-    pXtrWrite: process(Clk, ARst)
+    pXtrWrite: process(clk_i, arst_i)
     begin
-        if ARst = '1' then
+        if arst_i = '1' then
             pin_mode <= "0";
             pin_o <= '0';
-        elsif rising_edge(Clk) then
-            if SRst = '1' then
+        elsif rising_edge(clk_i) then
+            if srst_i = '1' then
                 pin_mode <= "0";
                 pin_o <= '0';
             else
-                if XtrCmd.Stb = '1' and XtrCmd.We = '1' then
-                    case to_integer(unsigned(XtrCmd.Adr(2 downto 2))) is
+                if xtr_cmd_i.vld = '1' and xtr_cmd_i.we = '1' then
+                    case to_integer(unsigned(xtr_cmd_i.Adr(2 downto 2))) is
                         when 0 =>
-                            pin_o <= XtrCmd.Dat(0);
+                            pin_o <= xtr_cmd_i.Dat(0);
                         when 1 => 
-                            pin_mode <= XtrCmd.Dat(0 downto 0);
+                            pin_mode <= xtr_cmd_i.Dat(0 downto 0);
                         when others =>
                     end case;
                 end if;        
@@ -53,15 +53,13 @@ begin
         end if;
     end process pXtrWrite;
     
-    XtrRsp.Dat <= x"0000000" & "000" & pin_i;
-    XtrRsp.CRDY <= '1';
-    process (Clk)
+    xtr_rsp_o.dat <= x"0000000" & "000" & pin_i;
+    xtr_rsp_o.rdy <= '1';
+    process (clk_i)
     begin
-        if rising_edge(Clk) then
-            XtrRsp.RRDY <= XtrCmd.Stb;
+        if rising_edge(clk_i) then
+            xtr_rsp_o.vld <= xtr_cmd_i.vld;
         end if;
     end process;
-
-
     
 end architecture rtl;

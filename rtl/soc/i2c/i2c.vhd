@@ -2,136 +2,102 @@ library IEEE;
 use IEEE.std_logic_1164.all;
 use IEEE.numeric_std.all;
 
-entity i2c is
+entity i2c_master is
     port (
-        ARst    : in    std_logic := '0';
-        Clk     : in    std_logic;
-        SRst    : in    std_logic := '0';
-        En      : in    std_logic;
-        Freq    : in    std_logic_vector(15 downto 0);
-        Trg     : in    std_logic;
-        We      : in    std_logic;
-        Last    : in    std_logic;
-        WDat    : in    std_logic_vector(7 downto 0);
-        RDat    : out   std_logic_vector(7 downto 0);
-        RVld    : out   std_logic;
-        Scl     : out   std_logic;
-        Sda     : inout std_logic;
-        AckErr  : out   std_logic;
-        Busy    : out   std_logic
+        arst_i : in std_logic := '0';
+        clk_i : in std_logic;
+        srst_i : in std_logic := '0';
+        en_i : in std_logic;
+        freq_i : in std_logic_vector(15 downto 0);
+        trg_i : in std_logic;
+        we_i : in std_logic;
+        last_i : in std_logic;
+        wdat_i : in std_logic_vector(7 downto 0);
+        rdat_o : out std_logic_vector(7 downto 0);
+        rvld_o : out std_logic;
+        scl_io : out std_logic;
+        sda_io : inout std_logic;
+        ack_err_o : out std_logic;
+        busy_o : out std_logic
     );
-end entity i2c;
+end entity i2c_master;
 
-architecture rtl of i2c is
-    type I2C_ST is (ST_IDLE, ST_WAIT, ST_START, ST_WRITE, ST_SLV_ACK, ST_READ, ST_MST_ACK, ST_STOP);
-    signal CurrentST    : I2C_ST;
-    signal SclReg       : std_logic_vector(16 downto 0);
-    signal SclEn        : std_logic;
-    signal iScl         : std_logic;
-    signal iSclRE       : std_logic;
-    signal iSclFE       : std_logic;
-    signal BitCnt       : std_logic_vector(7 downto 0);
-    signal Sda_i        : std_logic;
-    signal Sda_o        : std_logic;
-    signal Sda_t        : std_logic;
-    signal Scl_i        : std_logic;
-    signal Scl_o        : std_logic;
-    signal Scl_t        : std_logic;
-    signal iWDat        : std_logic_vector(7 downto 0);
-    signal iRDat        : std_logic_vector(7 downto 0);
-    signal CoolDown     : std_logic;
-
-    attribute mark_debug : string;
-    attribute keep : string;
-    attribute mark_debug of CurrentST   : signal is "true";
-    attribute mark_debug of BitCnt      : signal is "true";
-    attribute mark_debug of Scl_o       : signal is "true";
-    attribute mark_debug of Sda_i       : signal is "true";
-    attribute mark_debug of Sda_o       : signal is "true";
-    attribute mark_debug of Sda_t       : signal is "true";
-    attribute mark_debug of iWDat       : signal is "true";
-    attribute mark_debug of iRDat       : signal is "true";
-    attribute mark_debug of RVld        : signal is "true";
-    attribute mark_debug of En          : signal is "true";
-    attribute mark_debug of Trg         : signal is "true";
-    attribute mark_debug of We          : signal is "true";
-    attribute mark_debug of Last        : signal is "true";
-    attribute mark_debug of AckErr      : signal is "true";
-    attribute mark_debug of Busy        : signal is "true";
+architecture rtl of i2c_master is
+    type i2c_st is (st_idle, st_wait, st_start, st_write, st_slave_ack, st_read, st_master_ack, st_stop);
+    signal current_st : i2c_st;
+    signal scl_cnt : std_logic_vector(16 downto 0);
+    signal scl_re, scl_fe : std_logic;
+    signal sda_i, sda_o, sda_t : std_logic;
+    signal scl_i, scl_o, scl_t : std_logic;
+    signal bit_cnt, wdat, rdat : std_logic_vector(7 downto 0);
+    signal scl_en, cool_down : std_logic;
 begin
-    process (Clk)
+    process (clk_i)
     begin
-        if rising_edge(Clk) then
-            Sda_i <= Sda;
+        if rising_edge(clk_i) then
+            sda_i <= sda_io;
         end if;
     end process;
-    process (Clk)
+    process (clk_i)
     begin
-        if rising_edge(Clk) then
-            if ((CurrentST /= ST_IDLE) and CurrentST /= ST_WAIT) or (CurrentST = ST_IDLE and CoolDown = '1') then
-                SclReg <= std_logic_vector(unsigned('0' & SclReg(15 downto 0)) + unsigned('0' & Freq));
+        if rising_edge(clk_i) then
+            if ((current_st /= st_idle) and current_st /= st_wait) or (current_st = st_idle and cool_down = '1') then
+                scl_cnt <= std_logic_vector(unsigned('0' & scl_cnt(15 downto 0)) + unsigned('0' & freq_i));
             else
-                SclReg <= (others => '0');
-            end if;
-            if CurrentST /= ST_IDLE and CurrentST /= ST_WAIT then
-                if SclReg(16) = '1' then
-                    iScl <= not iScl;
-                end if;
-            else
-                iScl <= '1';
+                scl_cnt <= (others => '0');
             end if;
         end if;
     end process;
-    iSclRE <= '1' when SclReg(16) = '1' and Scl_o = '0' else '0';
-    iSclFE <= '1' when SclReg(16) = '1' and Scl_o = '1' else '0';
-    pFsm: process(Clk, ARst)
+    scl_re <= '1' when scl_cnt(16) = '1' and scl_o = '0' else '0';
+    scl_fe <= '1' when scl_cnt(16) = '1' and scl_o = '1' else '0';
+    pFsm: process(clk_i, arst_i)
     begin
-        if ARst = '1' then
-            CurrentST <= ST_IDLE;
-        elsif rising_edge(Clk) then
-            if SRst = '1' then
-                CurrentST <= ST_IDLE;
+        if arst_i = '1' then
+            current_st <= st_idle;
+        elsif rising_edge(clk_i) then
+            if srst_i = '1' then
+                current_st <= st_idle;
             else
-                case CurrentST is
-                    when ST_IDLE =>
-                        if En = '1' then
-                            CurrentST <= ST_START;
+                case current_st is
+                    when st_idle =>
+                        if en_i = '1' then
+                            current_st <= st_start;
                         end if;
-                    when ST_START =>
-                        if iSclRE = '1' then
-                            CurrentST <= ST_WRITE;
+                    when st_start =>
+                        if scl_re = '1' then
+                            current_st <= st_write;
                         end if;
-                    when ST_WAIT =>
-                        if En = '0' then
-                            CurrentST <= ST_STOP;
+                    when st_wait =>
+                        if en_i = '0' then
+                            current_st <= st_stop;
                         else
-                            if Trg = '1' then
-                                if We = '1' then
-                                    CurrentST <= ST_WRITE;
+                            if trg_i = '1' then
+                                if we_i = '1' then
+                                    current_st <= st_write;
                                 else
-                                    CurrentST <= ST_READ;
+                                    current_st <= st_read;
                                 end if;
                             end if;
                         end if;
-                    when ST_WRITE =>
-                        if BitCnt(7) = '1' and iSclFE = '1' then
-                            CurrentST <= ST_SLV_ACK;
+                    when st_write =>
+                        if bit_cnt(7) = '1' and scl_fe = '1' then
+                            current_st <= st_slave_ack;
                         end if;
-                    when ST_SLV_ACK =>
-                        if iSclFE = '1' then
-                            CurrentST <= ST_WAIT;
+                    when st_slave_ack =>
+                        if scl_fe = '1' then
+                            current_st <= st_wait;
                         end if;
-                    when ST_READ =>
-                        if BitCnt(7) = '1' and iSclFE = '1' then
-                            CurrentST <= ST_MST_ACK;
+                    when st_read =>
+                        if bit_cnt(7) = '1' and scl_fe = '1' then
+                            current_st <= st_master_ack;
                         end if;
-                    when ST_MST_ACK =>
-                        if iSclFE = '1' then
-                            CurrentST <= ST_WAIT;
+                    when st_master_ack =>
+                        if scl_fe = '1' then
+                            current_st <= st_wait;
                         end if;
-                    when ST_STOP =>
-                        if iSclFE = '1' then
-                            CurrentST <= ST_IDLE;
+                    when st_stop =>
+                        if scl_fe = '1' then
+                            current_st <= st_idle;
                         end if;
                     when others =>
                 end case;
@@ -139,106 +105,106 @@ begin
         end if;
     end process pFsm;
 
-    process (Clk)
+    process (clk_i)
     begin
-        if rising_edge(Clk) then
-            if We = '1' then
-                iWDat <= WDat;
+        if rising_edge(clk_i) then
+            if we_i = '1' then
+                wdat <= wdat_i;
             end if;
-            if SclReg(16) = '1' then
-                Scl_o <= not Scl_o;
+            if scl_cnt(16) = '1' then
+                scl_o <= not scl_o;
             end if;
-            RVld <= '0';
-            case CurrentST is
-                when ST_IDLE =>
-                    Scl_o <= '1';
-                    Sda_t <= '1';
-                    Sda_o <= '1';
-                    AckErr <= '0';
-                    BitCnt <= x"01";
-                when ST_WAIT => 
-                    Scl_o <= '0';
-                    Sda_t <= '1';
-                    Sda_o <= '1';
-                    BitCnt <= x"01";
-                when ST_START => 
-                    if iSclRE = '1' then
-                        Scl_o <= '0';
+            rvld_o <= '0';
+            case current_st is
+                when st_idle =>
+                    scl_o <= '1';
+                    sda_t <= '1';
+                    sda_o <= '1';
+                    ack_err_o <= '0';
+                    bit_cnt <= x"01";
+                when st_wait => 
+                    scl_o <= '0';
+                    sda_t <= '1';
+                    sda_o <= '1';
+                    bit_cnt <= x"01";
+                when st_start => 
+                    if scl_re = '1' then
+                        scl_o <= '0';
                     end if;
-                    Sda_t <= '0';
-                    Sda_o <= '0';
-                when ST_WRITE =>
---                    Scl_o <= not iScl;
-                    Sda_t <= '0';
-                    Sda_o <= iWDat(7);
-                    if iSclFE = '1' then
-                        iWDat <= iWDat(6 downto 0) & '0';
-                        BitCnt <= BitCnt(6 downto 0) & '0';
+                    sda_t <= '0';
+                    sda_o <= '0';
+                when st_write =>
+--                    scl_o <= not iScl;
+                    sda_t <= '0';
+                    sda_o <= wdat(7);
+                    if scl_fe = '1' then
+                        wdat <= wdat(6 downto 0) & '0';
+                        bit_cnt <= bit_cnt(6 downto 0) & '0';
                     end if;
-                when ST_SLV_ACK =>
---                    Scl_o <= not iScl;
-                    Sda_o <= '1';
-                    Sda_t <= '1';
-                    if iSclRE = '1' then
-                        AckErr <= Sda_i;
+                when st_slave_ack =>
+--                    scl_o <= not iScl;
+                    sda_o <= '1';
+                    sda_t <= '1';
+                    if scl_re = '1' then
+                        ack_err_o <= sda_i;
                     end if;
-                when ST_READ => 
---                    Scl_o <= iScl;
-                    Sda_t <= '1';
-                    if iSclRE = '1' then
-                        iRDat <= iRDat(6 downto 0) & Sda_i;
-                        if BitCnt(7) = '1' then
-                            RVld <= '1';
+                when st_read => 
+--                    scl_o <= iScl;
+                    sda_t <= '1';
+                    if scl_re = '1' then
+                        rdat <= rdat(6 downto 0) & sda_i;
+                        if bit_cnt(7) = '1' then
+                            rvld_o <= '1';
                         end if;
                     else
-                        RVld <= '0';
+                        rvld_o <= '0';
                     end if;
-                    if iSclFE = '1' then
-                        BitCnt <= BitCnt(6 downto 0) & '0';
+                    if scl_fe = '1' then
+                        bit_cnt <= bit_cnt(6 downto 0) & '0';
                     end if;
-                when ST_MST_ACK =>
---                    Scl_o <= iScl;
-                    if Last = '0' then
-                        Sda_t <= '0';
-                        Sda_o <= '0';
+                when st_master_ack =>
+--                    scl_o <= iScl;
+                    if last_i = '0' then
+                        sda_t <= '0';
+                        sda_o <= '0';
                     else
-                        Sda_t <= '1';
-                        Sda_o <= '1';
+                        sda_t <= '1';
+                        sda_o <= '1';
                     end if;
-                when ST_STOP => 
---                    Scl_o <= iScl;
-                    if iSclFE = '1' then
-                        Scl_o <= '1';
+                when st_stop => 
+--                    scl_o <= iScl;
+                    if scl_fe = '1' then
+                        scl_o <= '1';
                     end if;
-                    Sda_t <= '0';
-                    Sda_o <= '0';
+                    sda_t <= '0';
+                    sda_o <= '0';
                 when others =>
                     
             
             end case;
         end if;
     end process;
-    process (Clk, ARst)
+    process (clk_i, arst_i)
     begin
-        if ARst = '1' then
-            CoolDown <= '1';
-        elsif rising_edge(Clk) then
-            if SRst = '1' then
-                CoolDown <= '1';
+        if arst_i = '1' then
+            cool_down <= '1';
+        elsif rising_edge(clk_i) then
+            if srst_i = '1' then
+                cool_down <= '1';
             else
-                if CurrentST = ST_IDLE then
-                    if SclReg(16) = '1' then
-                        CoolDown <= '0';
+                if current_st = st_idle then
+                    if scl_cnt(16) = '1' then
+                        cool_down <= '0';
                     end if;
                 else
-                    CoolDown <= '1';
+                    cool_down <= '1';
                 end if;    
             end if;
         end if;
     end process;
-    RDat <= iRDat;
-    Scl_t <= '0';
-    Scl <= Scl_o;
-    Sda <= Sda_o when Sda_t = '0' else 'Z';
-    Busy <= '0' when (CurrentST = ST_IDLE and CoolDown = '0') or CurrentST = ST_WAIT else '1';
+    rdat_o <= rdat;
+    scl_t <= '0';
+    scl_io <= scl_o;
+    sda_io <= sda_o when sda_t = '0' else 'Z';
+    busy_o <= '0' when (current_st = st_idle and cool_down = '0') or current_st = st_wait else '1';
 end architecture rtl;
