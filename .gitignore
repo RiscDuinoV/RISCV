@@ -6,6 +6,11 @@
 !rtl/scala/project/*
 !*.scala
 !rtl/scala/build.sbt
+# Vivado
+!*.xpr
+!*.xdc
 !*/
 rtl/cpu/*
 !rtl/cpu/VexRiscvWrapper.vhd
+# Vivado
+*.runs
