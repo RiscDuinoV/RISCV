@@ -33,7 +33,8 @@ entity soc is
         i2c_sda_io : inout std_logic_vector(C_I2C - 1 downto 0);
         gpio_io : inout std_logic_vector(C_GPIO - 1 downto 0);
         xtr_cmd_o : out xtr_cmd_t;
-        xtr_rsp_i : in xtr_rsp_t
+        xtr_rsp_i : in xtr_rsp_t;
+        gpirq_i : in std_logic_vector(31 downto 0) := (others => '0')
     );
 end entity soc;
 
@@ -57,6 +58,7 @@ architecture rtl of soc is
     signal bram_dat_xtr_rsp : xtr_rsp_t;
 
     signal boot_trap_rst_rqst : std_logic;
+    signal external_irq, timer_irq : std_logic;
 
 begin
     -- Hold reset for at least 4 clock cycles
@@ -78,7 +80,7 @@ begin
             tck_i => tck_i, tdi_i => tdi_i, tdo_o => tdo_o, tms_i => tms_i,
             instr_xtr_cmd_o => instr_xtr_cmd, instr_xtr_rsp_i => instr_xtr_rsp,
             dat_xtr_cmd_o => dat_xtr_cmd, dat_xtr_rsp_i => dat_xtr_rsp,
-            external_irq_i => '0', timer_irq_i => '0', software_irq_i => '0');
+            external_irq_i => external_irq, timer_irq_i => timer_irq, software_irq_i => '0');
 
     u_xtr_abr_lyr1 : entity work.xtr_abr
         generic map (
@@ -124,7 +126,8 @@ begin
             spi_sck_o => spi_sck_o, spi_mosi_o => spi_mosi_o, spi_miso_i => spi_miso_i, spi_ss_o => spi_ss_o,
             i2c_scl_io => i2c_scl_io, i2c_sda_io => i2c_sda_io,
             gpio_io => gpio_io,
-            rst_rqst_o => boot_trap_rst_rqst);
+            rst_rqst_o => boot_trap_rst_rqst,
+            gpirq_i => gpirq_i, external_irq_o => external_irq, timer_irq_o => timer_irq);
 
               
 end architecture rtl;

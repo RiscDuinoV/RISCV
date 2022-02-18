@@ -28,7 +28,10 @@ entity xtr_peripherials is
         i2c_scl_io : out std_logic_vector(C_I2C - 1 downto 0);
         i2c_sda_io : inout std_logic_vector(C_I2C - 1 downto 0);
         gpio_io : inout std_logic_vector(C_GPIO - 1 downto 0);
-        rst_rqst_o : out std_logic
+        rst_rqst_o : out std_logic;
+        gpirq_i : in std_logic_vector(31 downto 0);
+        external_irq_o : out std_logic;
+        timer_irq_o : out std_logic
     );
 end entity xtr_peripherials;
 
@@ -41,16 +44,22 @@ architecture rtl of xtr_peripherials is
     -- UART
     signal v_uart_xtr_cmd : v_xtr_cmd_t(0 to 3);
     signal v_uart_xtr_rsp : v_xtr_rsp_t(0 to 3);
-    
+    signal uart_irq : std_logic_vector(3 downto 0);
+    signal uart_status : std_logic_vector(4*2 - 1 downto 0);
     -- Spi
     signal v_spi_xtr_cmd : v_xtr_cmd_t(0 to 3);
     signal v_spi_xtr_rsp : v_xtr_rsp_t(0 to 3);
     -- Timers
     signal v_timer_xtr_cmd : v_xtr_cmd_t(0 to 7);
     signal v_timer_xtr_rsp : v_xtr_rsp_t(0 to 7);
+    signal timer_irq :  std_logic_vector(7 downto 0);
     -- Gpio
     signal v_gpio_xtr_cmd : v_xtr_cmd_t(0 to 63);
     signal v_gpio_xtr_rsp : v_xtr_rsp_t(0 to 63);
+    -- interrupt controller
+    signal v_ictl_xtr_cmd : v_xtr_cmd_t(0 to 0);
+    signal v_ictl_xtr_rsp : v_xtr_rsp_t(0 to 0);
+    signal interrupt_src  : std_logic_vector(63 downto 0);
     -- Boot trap
     signal boot_trap_rst_rqst  : std_logic;
 begin
@@ -101,7 +110,8 @@ begin
             port map (
                 arst_i => arst_i, clk_i => clk_i, srst_i => srst_i,
                 xtr_cmd_i => v_uart_xtr_cmd(i - 1), xtr_rsp_o  => v_uart_xtr_rsp(i - 1),
-                rx_i => uart_rx_i(i - 1), tx_o => uart_tx_o(i - 1));
+                status_o => uart_status(2*(i-1) + 1 downto 2*(i-1)),
+                rx_i => uart_rx_i(i - 1), tx_o => uart_tx_o(i - 1), irq_o => uart_irq(i - 1));
     end generate gen_uart;
     -- SPI
     -- CXXX XXXX XXXX F200
@@ -137,7 +147,7 @@ begin
         port map (
             arst_i => arst_i, clk_i => clk_i, srst_i => srst_i,
             xtr_cmd_i => v_timer_xtr_cmd(0), xtr_rsp_o => v_timer_xtr_rsp(0),
-            irq_o => open);
+            irq_o => timer_irq(0));
 
     -- GPIOs
     -- CXXX XXXX XXXX F600
@@ -157,6 +167,20 @@ begin
                 xtr_cmd_i => v_gpio_xtr_cmd(i - 1), xtr_rsp_o => v_gpio_xtr_rsp(i - 1),
                 gpio_io => gpio_io(i - 1));
     end generate gen_gpio;
+
+    -- interrupt controllers
+    -- CXXX XXXX XXXX FC00
+    -- FXXX XXXX XXXX FDFF
+    v_ictl_xtr_cmd(0) <= v_xtr_cmd_lyr3(6);
+    v_xtr_rsp_lyr3(6) <= v_ictl_xtr_rsp(0);
+    u_xtr_interrupt_controller : entity work.xtr_interrupt_controller
+        port map (
+            arst_i => arst_i, clk_i => clk_i, srst_i => srst_i,
+            xtr_cmd_i => v_ictl_xtr_cmd(0), xtr_rsp_o => v_ictl_xtr_rsp(0),
+            src_i => interrupt_src, irq_o => external_irq_o);
+    interrupt_src(63 downto 32) <= gpirq_i;
+    interrupt_src(31 downto 0) <= x"0000000" & uart_irq;
+    timer_irq_o <= timer_irq(0);
     
     gen_boot_trap: if C_BOOTTRAP = TRUE and C_UART >= 1 generate
         -- Boot trap
@@ -166,7 +190,7 @@ begin
             port map (
                 arst_i => arst_i, clk_i => clk_i, srst_i => '0',
                 xtr_cmd_i => v_xtr_cmd_lyr3(7), xtr_rsp_o => v_xtr_rsp_lyr3(7),
-                baud_en_i => v_uart_xtr_rsp(0).dat(11), rx_vld_i => v_uart_xtr_rsp(0).dat(9), rx_dat_i => v_uart_xtr_rsp(0).dat(7 downto 0),
+                baud_en_i => uart_status(1), rx_vld_i => uart_status(0), rx_dat_i => v_uart_xtr_rsp(0).dat(7 downto 0),
                 trap_o => boot_trap_rst_rqst);
     end generate gen_boot_trap;
     
