@@ -16,21 +16,23 @@ entity xtr_uart is
         srst_i : in std_logic := '0';
         xtr_cmd_i : in xtr_cmd_t;
         xtr_rsp_o : out xtr_rsp_t;
+        status_o : out std_logic_vector(1 downto 0);
         rx_i : in std_logic;
-        tx_o : out std_logic
+        tx_o : out std_logic;
+        irq_o : out std_logic
     );
 end entity xtr_uart;
 
 architecture rtl of xtr_uart is
-    signal baud : std_logic_vector(15 downto 0);
+    signal baud, rx_baud : std_logic_vector(23 downto 0);
     signal tx_vld, tx_rdy : std_logic;
     signal tx_dat : std_logic_vector(7 downto 0);
     signal rx_dat, rx_dat_latch : std_logic_vector(7 downto 0);
     signal rx_vld, d_rx_vld, rx_available : std_logic;
-    signal rx_baud : std_logic_vector(15 downto 0);
     signal rx_baud_en : std_logic;
 begin
-    xtr_rsp_o.dat <= x"00000" & rx_baud_en & (not tx_rdy) & d_rx_vld & rx_available & rx_dat_latch;
+    status_o <= rx_baud_en & d_rx_vld; -- used for boottrap component
+    xtr_rsp_o.dat <= x"00000" & '0' & (not tx_rdy) & '0' & rx_available & rx_dat_latch;
     --XtrRsp.Dat <= x"00000" & Baud & TxBusy & dRxVld & RxAvailable & RxDatVld;
     xtr_rsp_o.rdy <= '1';
     process (clk_i, arst_i)
@@ -41,16 +43,17 @@ begin
             if srst_i = '1' then
                 baud <= freq2slv(real(C_BAUD), real(C_FREQ_IN), baud'length);
             else
-                if xtr_cmd_i.vld = '1' and xtr_cmd_i.we = '1' and xtr_cmd_i.sel(2) = '1' then
-                    baud <= xtr_cmd_i.dat(15 downto 0);
+                if xtr_cmd_i.vld = '1' and xtr_cmd_i.we = '1' and xtr_cmd_i.adr(2) = '1' then
+                    baud <= xtr_cmd_i.dat(23 downto 0);
                 end if;
             end if;
         end if;
     end process;
     tx_vld <= 
-        '1' when xtr_cmd_i.vld = '1' and xtr_cmd_i.we = '1' and xtr_cmd_i.sel(0) = '1' else 
+        '1' when xtr_cmd_i.vld = '1' and xtr_cmd_i.we = '1' and xtr_cmd_i.adr(2) = '0' else 
         '0';
     tx_dat <= xtr_cmd_i.dat(7 downto 0);
+    irq_o <= rx_available;
     u_uart_tx : entity work.uart_tx
         port map (
             arst_i => arst_i, clk_i => clk_i, srst_i => srst_i,
