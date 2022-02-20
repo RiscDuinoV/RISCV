@@ -100,21 +100,21 @@ architecture rtl of vexriscv_wrapper is
     signal reset                    : std_logic;
     signal debug_resetOut           : std_logic;
 
-    attribute mark_debug : string;
-    attribute keep : string;
-    attribute mark_debug of iBus_cmd_payload_pc : signal is "true";
-    attribute mark_debug of iBus_rsp_payload_inst : signal is "true";
-    attribute mark_debug of iBus_cmd_valid : signal is "true";
-    attribute mark_debug of iBus_cmd_ready : signal is "true";
-    attribute mark_debug of iBus_rsp_valid : signal is "true";
-    attribute mark_debug of dBus_cmd_payload_address : signal is "true";
-    attribute mark_debug of dBus_cmd_payload_data : signal is "true";
-    attribute mark_debug of dBus_cmd_valid : signal is "true";
-    attribute mark_debug of dBus_cmd_ready : signal is "true";
-    attribute mark_debug of dBus_cmd_payload_wr : signal is "true";
-    attribute mark_debug of dBus_cmd_payload_sel : signal is "true";
-    attribute mark_debug of dBus_rsp_data : signal is "true";
-    attribute mark_debug of dBus_rsp_ready : signal is "true";
+--    attribute mark_debug : string;
+--    attribute keep : string;
+--    attribute mark_debug of iBus_cmd_payload_pc : signal is "true";
+--    attribute mark_debug of iBus_rsp_payload_inst : signal is "true";
+--    attribute mark_debug of iBus_cmd_valid : signal is "true";
+--    attribute mark_debug of iBus_cmd_ready : signal is "true";
+--    attribute mark_debug of iBus_rsp_valid : signal is "true";
+--    attribute mark_debug of dBus_cmd_payload_address : signal is "true";
+--    attribute mark_debug of dBus_cmd_payload_data : signal is "true";
+--    attribute mark_debug of dBus_cmd_valid : signal is "true";
+--    attribute mark_debug of dBus_cmd_ready : signal is "true";
+--    attribute mark_debug of dBus_cmd_payload_wr : signal is "true";
+--    attribute mark_debug of dBus_cmd_payload_sel : signal is "true";
+--    attribute mark_debug of dBus_rsp_data : signal is "true";
+--    attribute mark_debug of dBus_rsp_ready : signal is "true";
     
 begin
     reset <= srst_i or debug_resetOut;

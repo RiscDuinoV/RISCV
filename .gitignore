@@ -14,3 +14,9 @@ rtl/cpu/*
 !rtl/cpu/VexRiscvWrapper.vhd
 # Vivado
 *.runs
+*.cache
+*.hw
+*.ioplanning
+*.ip_user_files
+*.sim
+*.srcs
