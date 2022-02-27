@@ -59,5 +59,15 @@ set_property IOSTANDARD LVCMOS33 [get_ports {pin_led_o[7]}]
 set_property IOSTANDARD LVCMOS33 [get_ports {pin_led_o[8]}]
 set_property IOSTANDARD LVCMOS33 [get_ports {pin_led_o[9]}]
 
+# Spi
+# set_property PACKAGE_PIN C8  [get_ports pin_spi_sck_o]
+set_property PACKAGE_PIN K17 [get_ports pin_spi_mosi_o]
+set_property PACKAGE_PIN K18 [get_ports pin_spi_miso_i]
+set_property PACKAGE_PIN M13 [get_ports pin_spi_ss_o]
+# set_property IOSTANDARD LVCMOS33 [get_ports pin_spi_sck_o]
+set_property IOSTANDARD LVCMOS33 [get_ports pin_spi_mosi_o]
+set_property IOSTANDARD LVCMOS33 [get_ports pin_spi_miso_i]
+set_property IOSTANDARD LVCMOS33 [get_ports pin_spi_ss_o]
+
 
 create_clock -period 10.000 -name pin_clk_i -waveform {0.000 5.000} [get_ports pin_clk_i]
