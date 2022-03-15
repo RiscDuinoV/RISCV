@@ -16,7 +16,7 @@ entity xtr_i2c is
         srst_i : in std_logic := '0';
         xtr_cmd_i : in xtr_cmd_t;
         xtr_rsp_o : out xtr_rsp_t;
-        scl_io : out std_logic;
+        scl_io : inout std_logic;
         sda_io : inout std_logic
     );
 end entity xtr_i2c;

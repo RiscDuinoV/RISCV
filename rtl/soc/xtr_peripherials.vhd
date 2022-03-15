@@ -25,7 +25,7 @@ entity xtr_peripherials is
         spi_mosi_o : out std_logic_vector(C_SPI - 1 downto 0);
         spi_miso_i : in std_logic_vector(C_SPI - 1 downto 0) := (others => '0');
         spi_ss_o : out std_logic_vector(C_SPI - 1 downto 0);
-        i2c_scl_io : out std_logic_vector(C_I2C - 1 downto 0);
+        i2c_scl_io : inout std_logic_vector(C_I2C - 1 downto 0);
         i2c_sda_io : inout std_logic_vector(C_I2C - 1 downto 0);
         gpio_io : inout std_logic_vector(C_GPIO - 1 downto 0);
         rst_rqst_o : out std_logic;
