@@ -21,6 +21,7 @@ architecture rtl of xtr_interrupt_controller is
     signal current_st : interrupt_st;
     signal interrupt_src, interrupt_mask : std_logic_vector(63 downto 0);
     signal done : std_logic;
+    signal interrupt_num : std_logic_vector(5 downto 0);
 begin
     
     process (clk_i, arst_i)
@@ -45,12 +46,26 @@ begin
             end if;
         end if;
     end process;
+    process (arst_i)
+    begin
+        if rising_edge(clk_i) then
+            if current_st = st_on_interrupt then
+                for i in 0 to 63 loop
+                    if interrupt_src(i) = '1' then
+                        interrupt_num <= std_logic_vector(to_unsigned(i, interrupt_num'length));
+                    end if;
+                end loop;
+            else
+                interrupt_num <= (others => '0');
+            end if;
+        end if;
+    end process;
 
     process (clk_i)
     begin
         if rising_edge(clk_i) then
             if current_st = st_idle then
-                interrupt_src <= src_i;
+                interrupt_src <= src_i and interrupt_mask;
             end if;
         end if;
     end process;
@@ -93,7 +108,7 @@ begin
     begin
         if rising_edge(clk_i) then
             if xtr_cmd_i.vld = '1' and xtr_cmd_i.we = '0' then
-                case to_integer(unsigned(xtr_cmd_i.adr(3 downto 2))) is
+                case to_integer(unsigned(xtr_cmd_i.adr(4 downto 2))) is
                     when 0 =>
                         xtr_rsp_o.dat <= interrupt_src(31 downto 0);
                     when 1 =>
@@ -102,6 +117,9 @@ begin
                         xtr_rsp_o.dat <= interrupt_mask(31 downto 0);
                     when 3 =>
                         xtr_rsp_o.dat <= interrupt_mask(63 downto 32);
+                    when 4 =>
+                        xtr_rsp_o.dat(31 downto 6) <= (others => '0');
+                        xtr_rsp_o.dat(5 downto 0) <= interrupt_num;
                     when others =>
                 end case;
             end if;
