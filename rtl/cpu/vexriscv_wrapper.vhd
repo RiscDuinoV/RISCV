@@ -7,6 +7,7 @@ use work.xtr_def.all;
 
 entity vexriscv_wrapper is
     port (
+        arst_i : in std_logic;
         clk_i : in std_logic;
         srst_i : in std_logic;
         tck_i : in std_logic;
@@ -140,7 +141,7 @@ begin
             timerInterrupt              => timer_irq_i,
             externalInterrupt           => external_irq_i,
             softwareInterrupt           => software_irq_i,
-            debugReset                  => '0',
+            debugReset                  => arst_i,
             debug_resetOut              => debug_resetOut,
             jtag_tck                    => tck_i,
             jtag_tdo                    => tdo_o,

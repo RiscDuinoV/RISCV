@@ -76,7 +76,7 @@ begin
     
     u_cpu : entity work.vexriscv_wrapper
         port map (
-            clk_i => clk_i, srst_i => sys_rst,
+            arst_i => arst_i, clk_i => clk_i, srst_i => sys_rst,
             tck_i => tck_i, tdi_i => tdi_i, tdo_o => tdo_o, tms_i => tms_i,
             instr_xtr_cmd_o => instr_xtr_cmd, instr_xtr_rsp_i => instr_xtr_rsp,
             dat_xtr_cmd_o => dat_xtr_cmd, dat_xtr_rsp_i => dat_xtr_rsp,
